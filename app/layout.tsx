@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, padding: 0 }}>
         <QueryClientProvider client={queryClient}>
           <AptosWalletAdapterProvider
-            autoConnect={false}
+            autoConnect={true}
             dappConfig={{ network: Network.SHELBYNET }}
             onError={(e) => console.error(e)}
           >

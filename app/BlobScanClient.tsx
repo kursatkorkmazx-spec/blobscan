@@ -570,7 +570,7 @@ export default function BlobScanClient() {
       </div>
 
       <div style={{ textAlign: "center" as const, fontSize: "11px", color: "#333", padding: "40px 0 16px" }}>
-        Built by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#555", textDecoration: "none" }}>@solscammer</a> · Powered by <a href="https://shelby.xyz" target="_blank" style={{ color: "#555", textDecoration: "none" }}>Shelby Protocol</a>
+        Built by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#555", textDecoration: "none" }}>@solscammer</a>
       </div>
       <style>{`@keyframes blink { 50% { opacity: 0; } }`}</style>
     </div>
