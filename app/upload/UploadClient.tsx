@@ -644,7 +644,7 @@ export default function UploadClient() {
                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <code style={{ flex: 1, fontSize: "10px", color: "#888", wordBreak: "break-all" }}>{txHash}</code>
                       <button onClick={() => copyToClipboard(txHash)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>Copy</button>
-                      <a href={`https://explorer.shelby.xyz/shelbynet/txn/${txHash}`} target="_blank" style={{ color: "#a0c4ff", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a4a", borderRadius: "4px", whiteSpace: "nowrap" }}>View TX</a>
+                      <a href={`https://explorer.aptoslabs.com/txn/${txHash}?network=shelbynet`} target="_blank" style={{ color: "#a0c4ff", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a4a", borderRadius: "4px", whiteSpace: "nowrap" }}>View TX</a>
                     </div>
                   </div>
                 )}
