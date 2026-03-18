@@ -1,12 +1,80 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useAccountBlobs } from "@shelby-protocol/react";
 import { shelbyClient } from "./shelbyClient";
+
+const SHELBY_DEPLOYER = "0x85fdb9a176ab8ef1d9d9c1b60d60b3924f0800ac1de1cc2085fb0b8bb4988e6a";
+const BLOB_REGISTER_EVENT = `${SHELBY_DEPLOYER}::blob_metadata::BlobRegisteredEvent`;
+const BLOB_DELETE_EVENT = `${SHELBY_DEPLOYER}::blob_metadata::BlobDeletedEvent`;
+
+interface BlobInfo {
+  blobName: string;
+  blobNameSuffix: string;
+  size: number;
+  expirationMicros: number;
+  creationMicros: number;
+  isWritten: boolean;
+  isDeleted: boolean;
+  txHash: string;
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+
+// Fetch blobs from on-chain transactions (no API key needed)
+async function fetchAccountBlobs(address: string): Promise<BlobInfo[]> {
+  try {
+    const res = await fetch(`https://api.shelbynet.shelby.xyz/v1/accounts/${address}/transactions?limit=100`);
+    if (!res.ok) return [];
+    const txns = await res.json();
+
+    const blobs: BlobInfo[] = [];
+    const deletedNames = new Set<string>();
+
+    // First pass: collect deleted blob names
+    for (const tx of txns) {
+      if (!tx.success) continue;
+      for (const ev of tx.events || []) {
+        if (ev.type === BLOB_DELETE_EVENT) {
+          deletedNames.add(ev.data?.blob_name || "");
+        }
+      }
+    }
+
+    // Second pass: collect registered blobs
+    for (const tx of txns) {
+      if (!tx.success) continue;
+      for (const ev of tx.events || []) {
+        if (ev.type === BLOB_REGISTER_EVENT) {
+          const d = ev.data;
+          const fullName = d.blob_name || "";
+          const suffix = fullName.includes("/") ? fullName.split("/").slice(1).join("/") : fullName;
+          const isDeleted = deletedNames.has(fullName);
+
+          // Check if already in list (avoid duplicates)
+          if (!blobs.some(b => b.blobName === fullName)) {
+            blobs.push({
+              blobName: fullName,
+              blobNameSuffix: suffix,
+              size: parseInt(d.blob_size || "0"),
+              expirationMicros: parseInt(d.expiration_micros || "0"),
+              creationMicros: parseInt(d.creation_micros || "0"),
+              isWritten: true,
+              isDeleted,
+              txHash: tx.hash,
+            });
+          }
+        }
+      }
+    }
+
+    return blobs.sort((a, b) => b.creationMicros - a.creationMicros);
+  } catch (err) {
+    console.error("Failed to fetch blobs:", err);
+    return [];
+  }
 }
 
 export default function BlobScanClient() {
@@ -19,16 +87,10 @@ export default function BlobScanClient() {
   const [netStatus, setNetStatus] = useState<any>(null);
   const [modalSrc, setModalSrc] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [accountBlobs, setAccountBlobs] = useState<BlobInfo[]>([]);
+  const [blobsLoading, setBlobsLoading] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const twRef = useRef<HTMLSpanElement>(null);
-
-  // Real Shelby SDK hook for account blobs
-  const { data: accountBlobs, isLoading: blobsLoading } = useAccountBlobs({
-    client: shelbyClient,
-    account: searchAddr,
-    enabled: !!searchAddr,
-    retry: false,
-  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -96,7 +158,7 @@ export default function BlobScanClient() {
       const r2 = await fetch("https://api.shelbynet.shelby.xyz/v1/");
       const d2 = await r2.json();
       const tps = (parseInt(d2.ledger_version) - parseInt(d.ledger_version)).toFixed(1);
-      setNetStatus({ ...d2, tps, totalBlobs: "1,159,370+", totalStorage: "89.87 GB" });
+      setNetStatus({ ...d2, tps });
     } catch {}
   }
 
@@ -105,6 +167,8 @@ export default function BlobScanClient() {
     setLoading(true);
     setShown(true);
     setSearchAddr(addr);
+    setBlobsLoading(true);
+    setAccountBlobs([]);
     try {
       const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${addr}"}}) { amount asset_type } }`;
       const r = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
@@ -116,6 +180,15 @@ export default function BlobScanClient() {
       setUsd(usdB ? (usdB.amount / 100000000).toFixed(2) + " ShelbyUSD" : "0 ShelbyUSD");
     } catch {}
     setLoading(false);
+
+    // Fetch blobs from on-chain transactions
+    try {
+      const blobs = await fetchAccountBlobs(addr);
+      setAccountBlobs(blobs);
+    } catch (err) {
+      console.error("Failed to fetch blobs:", err);
+    }
+    setBlobsLoading(false);
   }
 
   async function handleDownload(blobNameSuffix: string) {

@@ -1,7 +1,6 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { useAccountBlobs } from "@shelby-protocol/react";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import {
   createBlobKey,
@@ -68,6 +67,61 @@ async function encryptData(data: Uint8Array<ArrayBuffer>, password: string): Pro
   return result;
 }
 
+const SHELBY_DEPLOYER = "0x85fdb9a176ab8ef1d9d9c1b60d60b3924f0800ac1de1cc2085fb0b8bb4988e6a";
+const BLOB_REGISTER_EVENT = `${SHELBY_DEPLOYER}::blob_metadata::BlobRegisteredEvent`;
+
+interface OnChainBlob {
+  blobName: string;
+  blobNameSuffix: string;
+  size: number;
+  expirationMicros: number;
+  creationMicros: number;
+  isWritten: boolean;
+  isDeleted: boolean;
+  txHash: string;
+}
+
+async function fetchAccountBlobs(address: string): Promise<OnChainBlob[]> {
+  try {
+    const res = await fetch(`https://api.shelbynet.shelby.xyz/v1/accounts/${address}/transactions?limit=100`);
+    if (!res.ok) return [];
+    const txns = await res.json();
+    const blobs: OnChainBlob[] = [];
+    const deletedNames = new Set<string>();
+    const DELETE_EVENT = `${SHELBY_DEPLOYER}::blob_metadata::BlobDeletedEvent`;
+
+    for (const tx of txns) {
+      if (!tx.success) continue;
+      for (const ev of tx.events || []) {
+        if (ev.type === DELETE_EVENT) deletedNames.add(ev.data?.blob_name || "");
+      }
+    }
+    for (const tx of txns) {
+      if (!tx.success) continue;
+      for (const ev of tx.events || []) {
+        if (ev.type === BLOB_REGISTER_EVENT) {
+          const d = ev.data;
+          const fullName = d.blob_name || "";
+          const suffix = fullName.includes("/") ? fullName.split("/").slice(1).join("/") : fullName;
+          if (!blobs.some(b => b.blobName === fullName)) {
+            blobs.push({
+              blobName: fullName,
+              blobNameSuffix: suffix,
+              size: parseInt(d.blob_size || "0"),
+              expirationMicros: parseInt(d.expiration_micros || "0"),
+              creationMicros: parseInt(d.creation_micros || "0"),
+              isWritten: true,
+              isDeleted: deletedNames.has(fullName),
+              txHash: tx.hash,
+            });
+          }
+        }
+      }
+    }
+    return blobs.sort((a, b) => b.creationMicros - a.creationMicros);
+  } catch { return []; }
+}
+
 interface VaultRecord {
   id: string;
   name: string;
@@ -129,13 +183,17 @@ export default function UploadClient() {
   const displayAddress = account?.address?.toString();
   const strength = passwordStrength(password);
 
-  // Query account blobs for vault refresh (may fail without API key)
-  const { data: accountBlobs, refetch: refetchBlobs } = useAccountBlobs({
-    client: shelbyClient,
-    account: displayAddress || "",
-    enabled: !!displayAddress,
-    retry: false,
-  });
+  const [accountBlobs, setAccountBlobs] = useState<OnChainBlob[]>([]);
+
+  // Fetch blobs when wallet connects
+  const loadBlobs = useCallback(async () => {
+    if (!displayAddress) return;
+    const blobs = await fetchAccountBlobs(displayAddress);
+    setAccountBlobs(blobs);
+  }, [displayAddress]);
+
+  // Auto-fetch on wallet connect
+  useEffect(() => { loadBlobs(); }, [loadBlobs]);
 
   function addEvent(type: EventType, message: string) {
     const e: ProtocolEvent = { type, message, time: new Date().toLocaleTimeString() };
@@ -330,7 +388,7 @@ export default function UploadClient() {
       setStatus("Upload complete!");
 
       // Refresh blob list
-      refetchBlobs();
+      loadBlobs();
 
       setTimeout(() => { setStatus(""); setShareLink(""); }, 12000);
     } catch (err: any) {
