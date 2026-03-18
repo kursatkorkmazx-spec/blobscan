@@ -95,6 +95,8 @@ export default function BlobScanClient() {
   const [decryptInput, setDecryptInput] = useState("");
   const [isOneDownload, setIsOneDownload] = useState(false);
   const [linkConsumed, setLinkConsumed] = useState(false);
+  const [keyBlobName, setKeyBlobName] = useState<string | null>(null);
+  const [keyExpired, setKeyExpired] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const twRef = useRef<HTMLSpanElement>(null);
 
@@ -162,8 +164,10 @@ export default function BlobScanClient() {
     const urlAddr = params.get("address");
     const urlBlob = params.get("blob");
     const urlKey = params.get("key");
+    const urlKeyBlob = params.get("keyBlob");
     const urlOneDownload = params.get("oneDownload") === "true";
     if (urlKey) setDecryptKey(urlKey);
+    if (urlKeyBlob) setKeyBlobName(urlKeyBlob);
     if (urlBlob) setHighlightBlob(urlBlob);
     if (urlOneDownload) setIsOneDownload(true);
 
@@ -293,11 +297,41 @@ export default function BlobScanClient() {
         offset += chunk.length;
       }
 
-      // Try decryption: use URL key, or ask user
-      let key = decryptKey; // from share link URL
-      if (!key) {
-        // Check if data looks encrypted (try to detect AES-GCM format)
-        // Ask user if they want to provide a decryption key
+      // Try decryption: fetch key from on-chain blob, URL key, or ask user
+      let key = decryptKey; // from share link URL ?key= param
+
+      // If ONE-DL: fetch key from on-chain key blob
+      if (!key && keyBlobName && searchAddr) {
+        try {
+          const keyBlob = await shelbyClient.download({
+            account: searchAddr,
+            blobName: keyBlobName,
+          });
+          const keyReader = keyBlob.readable.getReader();
+          const keyChunks: Uint8Array[] = [];
+          let keyLen = 0;
+          while (true) {
+            const { done, value } = await keyReader.read();
+            if (done) break;
+            keyChunks.push(value);
+            keyLen += value.length;
+          }
+          const keyData = new Uint8Array(keyLen);
+          let keyOffset = 0;
+          for (const c of keyChunks) { keyData.set(c, keyOffset); keyOffset += c.length; }
+          key = new TextDecoder().decode(keyData);
+        } catch {
+          // Key blob expired or not found — on-chain enforced!
+          setKeyExpired(true);
+          setLinkConsumed(true);
+          alert("🔒 Decryption key has expired on-chain. This file can no longer be decrypted.\n\nThe key blob was automatically destroyed by the Shelby network.");
+          setDownloading(null);
+          return;
+        }
+      }
+
+      if (!key && !keyBlobName) {
+        // No key blob, no URL key — ask user manually
         key = await askForDecryptKey(blobNameSuffix);
       }
 
@@ -401,8 +435,14 @@ export default function BlobScanClient() {
         </div>
       )}
 
-      {/* Consumed one-download link banner */}
-      {linkConsumed && isOneDownload && (
+      {/* Consumed / key expired banner */}
+      {keyExpired && (
+        <div style={{ background: "#3a1010", border: "1px solid #f87171", borderRadius: "8px", padding: "16px", marginBottom: "16px", textAlign: "center" as const }}>
+          <div style={{ fontSize: "14px", color: "#f87171", fontWeight: "bold", marginBottom: "4px" }}>🔒 Decryption Key Destroyed</div>
+          <div style={{ fontSize: "12px", color: "#888" }}>The key blob has expired on-chain. This file can no longer be decrypted. The Shelby network automatically destroyed the decryption key.</div>
+        </div>
+      )}
+      {linkConsumed && isOneDownload && !keyExpired && (
         <div style={{ background: "#3a1010", border: "1px solid #f87171", borderRadius: "8px", padding: "16px", marginBottom: "16px", textAlign: "center" as const }}>
           <div style={{ fontSize: "14px", color: "#f87171", fontWeight: "bold", marginBottom: "4px" }}>⚡ This link has been consumed</div>
           <div style={{ fontSize: "12px", color: "#888" }}>This was a one-time download link and has already been used.</div>

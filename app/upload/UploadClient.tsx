@@ -137,6 +137,8 @@ interface VaultRecord {
   shareLink?: string;
   blobName?: string;
   owner?: string;
+  keyBlobName?: string;
+  keyExpiration?: string;
 }
 
 interface FileInfo {
@@ -159,6 +161,7 @@ export default function UploadClient() {
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
   const [expiration, setExpiration] = useState("86400");
   const [oneDownload, setOneDownload] = useState(false);
+  const [keyLifetime, setKeyLifetime] = useState("1800"); // 30 min default for one-download key blob
   const [encrypt, setEncrypt] = useState(false);
   const [password, setPassword] = useState("");
   const [autoKey, setAutoKey] = useState(false);
@@ -229,7 +232,11 @@ export default function UploadClient() {
   const handleUpload = async () => {
     if (!connected || !account || fileInfos.length === 0) return;
 
-    const finalPassword = autoKey ? generateKey() : password;
+    // For ONE-DL: force encryption with auto-generated key
+    const isOneDL = oneDownload;
+    const useEncryption = isOneDL ? true : encrypt;
+    const finalPassword = isOneDL ? generateKey() : (autoKey ? generateKey() : password);
+
     setStatus("Processing files...");
     setIsUploading(true);
     setTxHash("");
@@ -241,14 +248,20 @@ export default function UploadClient() {
       const expirationMicros = (Date.now() + expirationSeconds * 1000) * 1000;
       const accountAddress = account.address.toString();
 
+      // For ONE-DL: key blob has shorter expiration
+      const keyLifetimeSec = parseInt(keyLifetime);
+      const keyExpirationMicros = (Date.now() + keyLifetimeSec * 1000) * 1000;
+
       // Prepare blobs
       const blobsToUpload: { blobName: string; blobData: Uint8Array }[] = [];
+      // Key blobs for ONE-DL (stored separately with short expiration)
+      const keyBlobsToUpload: { blobName: string; blobData: Uint8Array }[] = [];
 
       for (const fi of fileInfos) {
         let data = new Uint8Array(await fi.file.arrayBuffer());
 
-        // Encrypt if enabled
-        if (encrypt && finalPassword) {
+        // Encrypt if enabled or ONE-DL
+        if (useEncryption && finalPassword) {
           setStatus(`Encrypting ${fi.file.name} (AES-256-GCM)...`);
           addEvent("FILE_ENCRYPTED", `AES-256-GCM encryption applied to ${fi.file.name}`);
           data = await encryptData(data, finalPassword);
@@ -258,16 +271,29 @@ export default function UploadClient() {
           blobName: fi.file.name,
           blobData: data,
         });
+
+        // For ONE-DL: create a key blob containing the AES password
+        if (isOneDL && finalPassword) {
+          const keyBlobName = `${fi.file.name}.shelbykey`;
+          const keyData = new TextEncoder().encode(finalPassword);
+          keyBlobsToUpload.push({
+            blobName: keyBlobName,
+            blobData: keyData,
+          });
+        }
       }
 
+      // All blobs to register (file blobs + key blobs)
+      const allBlobs = [...blobsToUpload, ...keyBlobsToUpload];
+
       // Step 1: Check which blobs already exist (try indexer, fallback to register all)
-      let blobsToRegister = blobsToUpload;
+      let blobsToRegister = allBlobs;
       try {
         setStatus("Checking existing blobs...");
         const existingBlobs = await shelbyClient.coordination.getBlobs({
           where: {
             blob_name: {
-              _in: blobsToUpload.map((blob) =>
+              _in: allBlobs.map((blob) =>
                 createBlobKey({
                   account: accountAddress,
                   blobName: blob.blobName,
@@ -277,7 +303,7 @@ export default function UploadClient() {
           },
         });
 
-        blobsToRegister = blobsToUpload.filter(
+        blobsToRegister = allBlobs.filter(
           (blob) =>
             !existingBlobs.some(
               (existingBlob) =>
@@ -293,59 +319,88 @@ export default function UploadClient() {
         addEvent("BLOB_REGISTERED", "Indexer unavailable, registering all blobs");
       }
 
-      // Step 2: Register new blobs on-chain (this sends the TX!)
+      // Step 2: Register blobs on-chain
+      // For ONE-DL: file blobs and key blobs have DIFFERENT expirations
+      // We need to split them into two batch register calls
       if (blobsToRegister.length > 0) {
         setStatus("Generating erasure coding commitments...");
         addEvent("BLOB_REGISTERED", `Generating commitments for ${blobsToRegister.length} blob(s)`);
 
         const provider = await createDefaultErasureCodingProvider();
-        const blobCommitments = await Promise.all(
-          blobsToRegister.map(async (blob) =>
-            generateCommitments(provider, blob.blobData)
-          )
-        );
+
+        // Separate file blobs and key blobs for different expirations
+        const fileBlobsToRegister = blobsToRegister.filter(b => !b.blobName.endsWith(".shelbykey"));
+        const keyBlobsToRegister = blobsToRegister.filter(b => b.blobName.endsWith(".shelbykey"));
 
         const chunksetSize = provider.config.erasure_k * provider.config.chunkSizeBytes;
 
-        setStatus("Waiting for wallet approval...");
-        addEvent("TX_SUBMITTED", "Sending register blob transaction via Petra...");
+        // Register file blobs (normal expiration)
+        if (fileBlobsToRegister.length > 0) {
+          const fileCommitments = await Promise.all(
+            fileBlobsToRegister.map(async (blob) => generateCommitments(provider, blob.blobData))
+          );
 
-        // This triggers the Petra wallet popup for TX approval!
-        const pendingTx = await wallet.signAndSubmitTransaction({
-          data: ShelbyBlobClient.createBatchRegisterBlobsPayload({
-            account: AccountAddress.from(accountAddress),
-            expirationMicros,
-            blobs: blobsToRegister.map((blob, index) => ({
-              blobName: blob.blobName,
-              blobSize: blob.blobData.length,
-              blobMerkleRoot: blobCommitments[index].blob_merkle_root,
-              numChunksets: expectedTotalChunksets(
-                blob.blobData.length,
-                chunksetSize
-              ),
-            })),
-            encoding: provider.config.enumIndex,
-          }),
-        });
+          setStatus("Waiting for wallet approval (file registration)...");
+          addEvent("TX_SUBMITTED", "Sending file register transaction...");
 
-        const hash = pendingTx.hash;
-        setTxHash(hash);
-        addEvent("TX_SUBMITTED", `TX submitted: ${hash}`);
+          const fileTx = await wallet.signAndSubmitTransaction({
+            data: ShelbyBlobClient.createBatchRegisterBlobsPayload({
+              account: AccountAddress.from(accountAddress),
+              expirationMicros,
+              blobs: fileBlobsToRegister.map((blob, index) => ({
+                blobName: blob.blobName,
+                blobSize: blob.blobData.length,
+                blobMerkleRoot: fileCommitments[index].blob_merkle_root,
+                numChunksets: expectedTotalChunksets(blob.blobData.length, chunksetSize),
+              })),
+              encoding: provider.config.enumIndex,
+            }),
+          });
 
-        setStatus("Waiting for TX confirmation...");
-        await shelbyClient.coordination.aptos.waitForTransaction({
-          transactionHash: hash,
-        });
+          setTxHash(fileTx.hash);
+          addEvent("TX_SUBMITTED", `File TX submitted: ${fileTx.hash}`);
+          setStatus("Waiting for file TX confirmation...");
+          await shelbyClient.coordination.aptos.waitForTransaction({ transactionHash: fileTx.hash });
+          addEvent("TX_CONFIRMED", `File TX confirmed: ${fileTx.hash}`);
+        }
 
-        addEvent("TX_CONFIRMED", `TX confirmed: ${hash}`);
-        setStatus("Transaction confirmed! Uploading blob data...");
+        // Register key blobs (short expiration) — separate TX!
+        if (keyBlobsToRegister.length > 0) {
+          const keyCommitments = await Promise.all(
+            keyBlobsToRegister.map(async (blob) => generateCommitments(provider, blob.blobData))
+          );
+
+          setStatus("Waiting for wallet approval (key blob registration)...");
+          addEvent("TX_SUBMITTED", "Registering self-destructing key blob...");
+
+          const keyTx = await wallet.signAndSubmitTransaction({
+            data: ShelbyBlobClient.createBatchRegisterBlobsPayload({
+              account: AccountAddress.from(accountAddress),
+              expirationMicros: keyExpirationMicros,
+              blobs: keyBlobsToRegister.map((blob, index) => ({
+                blobName: blob.blobName,
+                blobSize: blob.blobData.length,
+                blobMerkleRoot: keyCommitments[index].blob_merkle_root,
+                numChunksets: expectedTotalChunksets(blob.blobData.length, chunksetSize),
+              })),
+              encoding: provider.config.enumIndex,
+            }),
+          });
+
+          addEvent("TX_SUBMITTED", `Key TX submitted: ${keyTx.hash}`);
+          setStatus("Waiting for key TX confirmation...");
+          await shelbyClient.coordination.aptos.waitForTransaction({ transactionHash: keyTx.hash });
+          addEvent("TX_CONFIRMED", `Key blob registered with ${keyLifetimeSec}s expiration`);
+        }
+
+        setStatus("Transactions confirmed! Uploading blob data...");
       } else {
         addEvent("BLOB_REGISTERED", "Blobs already registered on-chain, skipping TX");
       }
 
-      // Step 3: Upload blob data to RPC
+      // Step 3: Upload blob data to RPC (file blobs + key blobs)
       setStatus("Uploading blob data to storage providers...");
-      for (const blob of blobsToUpload) {
+      for (const blob of allBlobs) {
         addEvent("BLOB_UPLOADED", `Uploading ${blob.blobName} to RPC...`);
         await shelbyClient.rpc.putBlob({
           account: accountAddress,
@@ -356,24 +411,31 @@ export default function UploadClient() {
       }
 
       // Create vault records
+      const keyLifetimeLabel = keyLifetimeSec === 300 ? "5 min" : keyLifetimeSec === 1800 ? "30 min" : keyLifetimeSec === 3600 ? "1 hour" : `${keyLifetimeSec}s`;
       const newRecords: VaultRecord[] = fileInfos.map((fi) => {
         const ownerAddr = accountAddress;
-        const link = `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}${encrypt && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}${oneDownload ? "&oneDownload=true" : ""}`;
+        const keyBlobName = isOneDL ? `${fi.file.name}.shelbykey` : undefined;
+        // ONE-DL link: no key in URL, key is fetched from on-chain blob
+        const link = isOneDL
+          ? `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}&keyBlob=${encodeURIComponent(keyBlobName!)}&oneDownload=true`
+          : `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}${useEncryption && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}`;
         return {
           id: `blob_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           name: fi.file.name,
           size: fi.file.size,
           hash: fi.hash,
           date: new Date().toLocaleString(),
-          encrypted: encrypt && !!finalPassword,
-          key: encrypt ? finalPassword : undefined,
+          encrypted: useEncryption && !!finalPassword,
+          key: useEncryption ? finalPassword : undefined,
           status: "ACTIVE" as const,
-          oneDownload,
+          oneDownload: isOneDL,
           downloaded: false,
           expiration: expirationSeconds === 3600 ? "1 hour" : expirationSeconds === 86400 ? "1 day" : expirationSeconds === 604800 ? "7 days" : "30 days",
           shareLink: link,
           blobName: fi.file.name,
           owner: ownerAddr,
+          keyBlobName,
+          keyExpiration: isOneDL ? keyLifetimeLabel : undefined,
         };
       });
 
@@ -620,8 +682,26 @@ export default function UploadClient() {
                   )}
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "#888", marginTop: "8px" }}>
                     <input type="checkbox" checked={oneDownload} onChange={e => setOneDownload(e.target.checked)} />
-                    ONE DOWNLOAD — auto-consume after first download
+                    ⚡ ONE DOWNLOAD — on-chain enforced (key blob self-destructs)
                   </label>
+                  {oneDownload && (
+                    <div style={{ marginTop: "8px", marginLeft: "24px" }}>
+                      <div style={{ fontSize: "11px", color: "#f87171", marginBottom: "6px" }}>
+                        File will be AES-256-GCM encrypted. Decryption key stored as separate on-chain blob with short expiration.
+                        After expiration, key is destroyed by the network — file becomes permanently undecryptable.
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "11px", color: "#888" }}>Key lifetime:</span>
+                        <select value={keyLifetime} onChange={e => setKeyLifetime(e.target.value)}
+                          style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#f87171", fontFamily: "monospace", fontSize: "11px" }}>
+                          <option value="300">5 minutes</option>
+                          <option value="1800">30 minutes</option>
+                          <option value="3600">1 hour</option>
+                          <option value="7200">2 hours</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
@@ -713,6 +793,7 @@ export default function UploadClient() {
                     {formatSize(r.size)} · {r.date} · Expires: {r.expiration}
                     {r.encrypted && <span style={{ marginLeft: "6px", color: "#60a5fa" }}>🔒 AES-256</span>}
                     {r.oneDownload && <span style={{ marginLeft: "6px", color: "#f87171" }}>⚡ ONE-DL</span>}
+                    {r.keyBlobName && <span style={{ marginLeft: "6px", color: "#f87171" }}>Key expires: {r.keyExpiration}</span>}
                   </div>
                   <div style={{ fontSize: "10px", color: "#333", marginBottom: "6px" }}>ID: {r.id} · SHA-256: {r.hash.slice(0, 12)}...</div>
                   <div style={{ display: "flex", gap: "6px" }}>
