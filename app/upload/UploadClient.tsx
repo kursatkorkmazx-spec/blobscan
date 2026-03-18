@@ -358,7 +358,7 @@ export default function UploadClient() {
       // Create vault records
       const newRecords: VaultRecord[] = fileInfos.map((fi) => {
         const ownerAddr = accountAddress;
-        const link = `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}${encrypt && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}`;
+        const link = `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}${encrypt && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}${oneDownload ? "&oneDownload=true" : ""}`;
         return {
           id: `blob_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           name: fi.file.name,

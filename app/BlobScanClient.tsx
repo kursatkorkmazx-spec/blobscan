@@ -93,6 +93,8 @@ export default function BlobScanClient() {
   const [decryptKey, setDecryptKey] = useState<string | null>(null); // from URL
   const [decryptPrompt, setDecryptPrompt] = useState<{ blobName: string; resolve: (key: string | null) => void } | null>(null);
   const [decryptInput, setDecryptInput] = useState("");
+  const [isOneDownload, setIsOneDownload] = useState(false);
+  const [linkConsumed, setLinkConsumed] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const twRef = useRef<HTMLSpanElement>(null);
 
@@ -160,8 +162,19 @@ export default function BlobScanClient() {
     const urlAddr = params.get("address");
     const urlBlob = params.get("blob");
     const urlKey = params.get("key");
+    const urlOneDownload = params.get("oneDownload") === "true";
     if (urlKey) setDecryptKey(urlKey);
     if (urlBlob) setHighlightBlob(urlBlob);
+    if (urlOneDownload) setIsOneDownload(true);
+
+    // Check if this one-download link was already consumed
+    if (urlOneDownload && urlBlob && urlAddr) {
+      const consumedKey = `consumed_${urlAddr}_${urlBlob}`;
+      if (localStorage.getItem(consumedKey)) {
+        setLinkConsumed(true);
+      }
+    }
+
     if (urlAddr && urlAddr.startsWith("0x")) {
       setAddr(urlAddr);
       // Auto-lookup address and show blobs (no auto-download)
@@ -304,6 +317,13 @@ export default function BlobScanClient() {
       a.download = blobNameSuffix.split("/").pop() || blobNameSuffix;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Mark as consumed if one-download link
+      if (isOneDownload && highlightBlob === blobNameSuffix) {
+        const consumedKey = `consumed_${searchAddr}_${blobNameSuffix}`;
+        localStorage.setItem(consumedKey, Date.now().toString());
+        setLinkConsumed(true);
+      }
     } catch (err: any) {
       alert(`Download failed: ${err?.message || "Unknown error"}`);
     } finally {
@@ -381,6 +401,14 @@ export default function BlobScanClient() {
         </div>
       )}
 
+      {/* Consumed one-download link banner */}
+      {linkConsumed && isOneDownload && (
+        <div style={{ background: "#3a1010", border: "1px solid #f87171", borderRadius: "8px", padding: "16px", marginBottom: "16px", textAlign: "center" as const }}>
+          <div style={{ fontSize: "14px", color: "#f87171", fontWeight: "bold", marginBottom: "4px" }}>⚡ This link has been consumed</div>
+          <div style={{ fontSize: "12px", color: "#888" }}>This was a one-time download link and has already been used.</div>
+        </div>
+      )}
+
       <h1 style={{ color: "#7dd3a8", marginBottom: "4px" }}>BlobScan</h1>
       <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>
         <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>shelbynet · Real blob explorer</div>
@@ -437,7 +465,9 @@ export default function BlobScanClient() {
                   )}
                   <div style={{ flex: 1 }}>
                     <span style={{ color: "#a0c4ff", fontSize: "13px" }}>{blob.blobNameSuffix}</span>
-                    {isHighlighted && <span style={{ fontSize: "10px", color: "#7dd3a8", marginLeft: "6px", background: "#1a3a2a", padding: "1px 6px", borderRadius: "3px" }}>Shared with you</span>}
+                    {isHighlighted && !linkConsumed && <span style={{ fontSize: "10px", color: "#7dd3a8", marginLeft: "6px", background: "#1a3a2a", padding: "1px 6px", borderRadius: "3px" }}>Shared with you</span>}
+                    {isHighlighted && isOneDownload && <span style={{ fontSize: "10px", color: "#f87171", marginLeft: "6px", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>⚡ ONE-DL</span>}
+                    {isHighlighted && linkConsumed && <span style={{ fontSize: "10px", color: "#f87171", marginLeft: "6px", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>CONSUMED</span>}
                     <div style={{ color: "#555", fontSize: "11px" }}>
                       {formatSize(blob.size)}
                       {" · "}
@@ -450,12 +480,15 @@ export default function BlobScanClient() {
                     </div>
                   </div>
                   <a href={explorerUrl} target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a2a", borderRadius: "4px", marginRight: "4px" }}>Explorer</a>
-                  {!isExpired && blob.isWritten && (
+                  {!isExpired && blob.isWritten && !(isHighlighted && linkConsumed) && (
                     <button onClick={() => handleDownload(blob.blobNameSuffix)}
                       disabled={downloading === blob.blobNameSuffix}
                       style={{ color: "#7dd3a8", fontSize: "11px", background: "transparent", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px", cursor: "pointer", fontFamily: "monospace", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1 }}>
                       {downloading === blob.blobNameSuffix ? "Downloading..." : "Download"}
                     </button>
+                  )}
+                  {isHighlighted && linkConsumed && (
+                    <span style={{ color: "#f87171", fontSize: "11px", padding: "4px 8px", border: "1px solid #3a1010", borderRadius: "4px" }}>Link used</span>
                   )}
                 </div>
               );
