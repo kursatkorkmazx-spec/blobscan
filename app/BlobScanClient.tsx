@@ -89,6 +89,10 @@ export default function BlobScanClient() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [accountBlobs, setAccountBlobs] = useState<BlobInfo[]>([]);
   const [blobsLoading, setBlobsLoading] = useState(false);
+  const [highlightBlob, setHighlightBlob] = useState<string | null>(null);
+  const [decryptKey, setDecryptKey] = useState<string | null>(null); // from URL
+  const [decryptPrompt, setDecryptPrompt] = useState<{ blobName: string; resolve: (key: string | null) => void } | null>(null);
+  const [decryptInput, setDecryptInput] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const twRef = useRef<HTMLSpanElement>(null);
 
@@ -155,9 +159,12 @@ export default function BlobScanClient() {
     const params = new URLSearchParams(window.location.search);
     const urlAddr = params.get("address");
     const urlBlob = params.get("blob");
+    const urlKey = params.get("key");
+    if (urlKey) setDecryptKey(urlKey);
+    if (urlBlob) setHighlightBlob(urlBlob);
     if (urlAddr && urlAddr.startsWith("0x")) {
       setAddr(urlAddr);
-      // Auto-lookup then auto-download
+      // Auto-lookup address and show blobs (no auto-download)
       (async () => {
         setLoading(true);
         setShown(true);
@@ -178,59 +185,6 @@ export default function BlobScanClient() {
         const blobs = await fetchAccountBlobs(urlAddr);
         setAccountBlobs(blobs);
         setBlobsLoading(false);
-
-        // Auto-download if blob param specified
-        if (urlBlob) {
-          try {
-            setDownloading(urlBlob);
-            const blob = await shelbyClient.download({ account: urlAddr, blobName: urlBlob });
-            const reader = blob.readable.getReader();
-            const chunks: Uint8Array[] = [];
-            let totalLength = 0;
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              chunks.push(value);
-              totalLength += value.length;
-            }
-            let data = new Uint8Array(totalLength);
-            let offset = 0;
-            for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.length; }
-
-            // Decrypt if key provided
-            const urlKey = params.get("key");
-            if (urlKey) {
-              try {
-                const salt = data.slice(0, 16);
-                const iv = data.slice(16, 28);
-                const ciphertext = data.slice(28);
-                const enc = new TextEncoder();
-                const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(urlKey), "PBKDF2", false, ["deriveKey"]);
-                const cryptoKey = await crypto.subtle.deriveKey(
-                  { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-                  keyMaterial,
-                  { name: "AES-GCM", length: 256 },
-                  false,
-                  ["decrypt"]
-                );
-                const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext);
-                data = new Uint8Array(decrypted);
-              } catch { /* decryption failed, download raw */ }
-            }
-
-            const downloadBlob = new Blob([data]);
-            const url = URL.createObjectURL(downloadBlob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = urlBlob.split("/").pop() || urlBlob;
-            a.click();
-            URL.revokeObjectURL(url);
-          } catch (err: any) {
-            alert(`Download failed: ${err?.message || "Unknown error"}`);
-          } finally {
-            setDownloading(null);
-          }
-        }
       })();
     }
   }, []);
@@ -276,6 +230,30 @@ export default function BlobScanClient() {
     setBlobsLoading(false);
   }
 
+  async function decryptData(data: Uint8Array<ArrayBuffer>, key: string): Promise<Uint8Array<ArrayBuffer>> {
+    const salt = data.slice(0, 16);
+    const iv = data.slice(16, 28);
+    const ciphertext = data.slice(28);
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(key), "PBKDF2", false, ["deriveKey"]);
+    const cryptoKey = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["decrypt"]
+    );
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext);
+    return new Uint8Array(decrypted);
+  }
+
+  function askForDecryptKey(blobName: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      setDecryptInput("");
+      setDecryptPrompt({ blobName, resolve });
+    });
+  }
+
   async function handleDownload(blobNameSuffix: string) {
     if (!searchAddr) return;
     try {
@@ -295,11 +273,27 @@ export default function BlobScanClient() {
         chunks.push(value);
         totalLength += value.length;
       }
-      const data = new Uint8Array(totalLength);
+      let data = new Uint8Array(totalLength);
       let offset = 0;
       for (const chunk of chunks) {
         data.set(chunk, offset);
         offset += chunk.length;
+      }
+
+      // Try decryption: use URL key, or ask user
+      let key = decryptKey; // from share link URL
+      if (!key) {
+        // Check if data looks encrypted (try to detect AES-GCM format)
+        // Ask user if they want to provide a decryption key
+        key = await askForDecryptKey(blobNameSuffix);
+      }
+
+      if (key) {
+        try {
+          data = await decryptData(data, key);
+        } catch {
+          alert("Decryption failed — wrong key. Downloading encrypted file.");
+        }
       }
 
       // Trigger browser download
@@ -365,6 +359,28 @@ export default function BlobScanClient() {
           <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} />
         </div>
       )}
+      {/* Decrypt key prompt modal */}
+      {decryptPrompt && (
+        <div style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.85)", zIndex: 1000, alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "24px", maxWidth: "420px", width: "90%" }}>
+            <div style={{ fontSize: "13px", color: "#7dd3a8", marginBottom: "4px" }}>🔒 Encrypted Blob</div>
+            <div style={{ fontSize: "12px", color: "#888", marginBottom: "12px" }}>
+              <span style={{ color: "#a0c4ff" }}>{decryptPrompt.blobName}</span> may be encrypted. Enter the decryption key or skip to download raw data.
+            </div>
+            <input value={decryptInput} onChange={e => setDecryptInput(e.target.value)} placeholder="Enter decryption key..."
+              onKeyDown={e => { if (e.key === "Enter" && decryptInput) { decryptPrompt.resolve(decryptInput); setDecryptPrompt(null); } }}
+              style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "8px 12px", color: "#e0e0e0", fontFamily: "monospace", fontSize: "12px", marginBottom: "12px", boxSizing: "border-box" }} />
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button onClick={() => { decryptPrompt.resolve(null); setDecryptPrompt(null); }}
+                style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#888", fontFamily: "monospace", fontSize: "12px", cursor: "pointer" }}>Skip (raw)</button>
+              <button onClick={() => { decryptPrompt.resolve(decryptInput || null); setDecryptPrompt(null); }}
+                disabled={!decryptInput}
+                style={{ background: decryptInput ? "#7dd3a8" : "#333", color: "#0f0f0f", border: "none", borderRadius: "4px", padding: "6px 14px", fontFamily: "monospace", fontSize: "12px", cursor: decryptInput ? "pointer" : "default", fontWeight: "bold" }}>Decrypt & Download</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 style={{ color: "#7dd3a8", marginBottom: "4px" }}>BlobScan</h1>
       <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>
         <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>shelbynet · Real blob explorer</div>
@@ -410,8 +426,9 @@ export default function BlobScanClient() {
               const isImage = blob.blobNameSuffix.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
               const isExpired = blob.expirationMicros < Date.now() * 1000;
               const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${searchAddr}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`;
+              const isHighlighted = highlightBlob === blob.blobNameSuffix;
               return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #2a2a2a", padding: "10px 0" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #2a2a2a", padding: "10px 0", ...(isHighlighted ? { background: "#0a1a0a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "10px", marginBottom: "4px" } : {}) }}>
                   {isImage ? (
                     <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
                       style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "zoom-in", color: "#7dd3a8" }}>🖼</div>
@@ -420,6 +437,7 @@ export default function BlobScanClient() {
                   )}
                   <div style={{ flex: 1 }}>
                     <span style={{ color: "#a0c4ff", fontSize: "13px" }}>{blob.blobNameSuffix}</span>
+                    {isHighlighted && <span style={{ fontSize: "10px", color: "#7dd3a8", marginLeft: "6px", background: "#1a3a2a", padding: "1px 6px", borderRadius: "3px" }}>Shared with you</span>}
                     <div style={{ color: "#555", fontSize: "11px" }}>
                       {formatSize(blob.size)}
                       {" · "}
