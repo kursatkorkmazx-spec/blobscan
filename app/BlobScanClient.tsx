@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { shelbyClient } from "./shelbyClient";
 
 const SHELBY_DEPLOYER = "0x85fdb9a176ab8ef1d9d9c1b60d60b3924f0800ac1de1cc2085fb0b8bb4988e6a";
@@ -78,6 +79,8 @@ async function fetchAccountBlobs(address: string): Promise<BlobInfo[]> {
 }
 
 export default function BlobScanClient() {
+  const { account, connect, wallets, connected, disconnect } = useWallet();
+  const walletAddress = account?.address?.toString();
   const [addr, setAddr] = useState("");
   const [searchAddr, setSearchAddr] = useState("");
   const [apt, setApt] = useState("");
@@ -180,29 +183,8 @@ export default function BlobScanClient() {
     }
 
     if (urlAddr && urlAddr.startsWith("0x")) {
-      setAddr(urlAddr);
       // Auto-lookup address and show blobs (no auto-download)
-      (async () => {
-        setLoading(true);
-        setShown(true);
-        setSearchAddr(urlAddr);
-        setBlobsLoading(true);
-        try {
-          const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${urlAddr}"}}) { amount asset_type } }`;
-          const r = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
-          const data = await r.json();
-          const balances = data.data?.current_fungible_asset_balances || [];
-          const aptB = balances.find((b: any) => b.asset_type === "0x1::aptos_coin::AptosCoin");
-          const usdB = balances.find((b: any) => b.asset_type.includes("1b18363"));
-          setApt(aptB ? (aptB.amount / 100000000).toFixed(2) + " APT" : "0 APT");
-          setUsd(usdB ? (usdB.amount / 100000000).toFixed(2) + " ShelbyUSD" : "0 ShelbyUSD");
-        } catch {}
-        setLoading(false);
-
-        const blobs = await fetchAccountBlobs(urlAddr);
-        setAccountBlobs(blobs);
-        setBlobsLoading(false);
-      })();
+      lookupAddress(urlAddr);
     }
   }, []);
 
@@ -218,15 +200,16 @@ export default function BlobScanClient() {
     } catch {}
   }
 
-  async function lookup() {
-    if (!addr.startsWith("0x")) { alert("Please enter a valid address starting with 0x"); return; }
+  async function lookupAddress(address: string) {
+    if (!address.startsWith("0x")) { alert("Please enter a valid address starting with 0x"); return; }
+    setAddr(address);
     setLoading(true);
     setShown(true);
-    setSearchAddr(addr);
+    setSearchAddr(address);
     setBlobsLoading(true);
     setAccountBlobs([]);
     try {
-      const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${addr}"}}) { amount asset_type } }`;
+      const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${address}"}}) { amount asset_type } }`;
       const r = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
       const data = await r.json();
       const balances = data.data?.current_fungible_asset_balances || [];
@@ -239,12 +222,16 @@ export default function BlobScanClient() {
 
     // Fetch blobs from on-chain transactions
     try {
-      const blobs = await fetchAccountBlobs(addr);
+      const blobs = await fetchAccountBlobs(address);
       setAccountBlobs(blobs);
     } catch (err) {
       console.error("Failed to fetch blobs:", err);
     }
     setBlobsLoading(false);
+  }
+
+  function lookup() {
+    lookupAddress(addr);
   }
 
   async function decryptData(data: Uint8Array<ArrayBuffer>, key: string): Promise<Uint8Array<ArrayBuffer>> {
@@ -449,6 +436,31 @@ export default function BlobScanClient() {
         </div>
       )}
 
+      {/* Wallet panel - top right */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+        <div />
+        {connected ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ background: "#1a1a1a", border: "1px solid #1a3a2a", borderRadius: "6px", padding: "6px 12px", fontSize: "11px" }}>
+              <span style={{ color: "#4ade80" }}>● Connected</span>
+              <span style={{ color: "#555", marginLeft: "6px" }}>{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}</span>
+            </div>
+            <button onClick={() => disconnect()}
+              style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Disconnect</button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "6px" }}>
+            {wallets.filter(w => w.name === "Petra").map((w) => (
+              <button key={w.name} onClick={() => connect(w.name)}
+                style={{ background: "#1a1a1a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "6px 14px", color: "#7dd3a8", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Connect Petra</button>
+            ))}
+            {wallets.filter(w => w.name === "Petra").length === 0 && (
+              <a href="https://petra.app" target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "6px 14px" }}>Install Petra</a>
+            )}
+          </div>
+        )}
+      </div>
+
       <h1 style={{ color: "#7dd3a8", marginBottom: "4px" }}>BlobScan</h1>
       <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>
         <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>shelbynet · Real blob explorer</div>
@@ -457,6 +469,10 @@ export default function BlobScanClient() {
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
         <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()} placeholder="Enter wallet address (0x...)"
           style={{ flex: 1, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "10px 14px", color: "#e0e0e0", fontFamily: "monospace", fontSize: "13px", outline: "none" }} />
+        {connected && walletAddress && (
+          <button onClick={() => lookupAddress(walletAddress)}
+            style={{ background: "#1a1a1a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "10px 14px", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", color: "#7dd3a8", whiteSpace: "nowrap" }}>My</button>
+        )}
         <button onClick={lookup} style={{ background: "#7dd3a8", color: "#0f0f0f", border: "none", borderRadius: "6px", padding: "10px 20px", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", fontWeight: "bold" }}>Look up</button>
       </div>
 
