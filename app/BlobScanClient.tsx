@@ -1,20 +1,33 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useAccountBlobs } from "@shelby-protocol/react";
+import { shelbyClient } from "./shelbyClient";
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
 
 export default function BlobScanClient() {
   const [addr, setAddr] = useState("");
+  const [searchAddr, setSearchAddr] = useState("");
   const [apt, setApt] = useState("");
   const [usd, setUsd] = useState("");
-  const [address, setAddress] = useState("");
-  const [blobSummary, setBlobSummary] = useState<{total: string, pending: number} | null>(null);
-  const [blobs, setBlobs] = useState<{name: string, size: string, expires: string}[]>([]);
   const [shown, setShown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [netStatus, setNetStatus] = useState<any>(null);
-  const [recentEvents, setRecentEvents] = useState<{name: string, owner: string, time: string}[]>([]);
   const [modalSrc, setModalSrc] = useState("");
+  const [downloading, setDownloading] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const twRef = useRef<HTMLSpanElement>(null);
+
+  // Real Shelby SDK hook for account blobs
+  const { data: accountBlobs, isLoading: blobsLoading } = useAccountBlobs({
+    client: shelbyClient,
+    account: searchAddr,
+    enabled: !!searchAddr,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,9 +57,9 @@ export default function BlobScanClient() {
   useEffect(() => {
     const msgs = [
       "> Enter a wallet address to check balance and blobs",
-      "> Network status updates every 30 seconds",
+      "> Blobs are stored on the Shelby decentralized network",
+      "> Download blobs directly from storage providers",
       "> Blob uploads require APT for gas fees",
-      "> Blobs expire based on the date set at upload",
     ];
     let li = 0, ci = 0, deleting = false;
     const el = twRef.current;
@@ -83,21 +96,14 @@ export default function BlobScanClient() {
       const d2 = await r2.json();
       const tps = (parseInt(d2.ledger_version) - parseInt(d.ledger_version)).toFixed(1);
       setNetStatus({ ...d2, tps, totalBlobs: "1,159,370+", totalStorage: "89.87 GB" });
-      // Son event'leri çek
-      try {
-        const eq = `{ blob_events: blobs(limit: 5, order_by: { created_at: desc }) { blob_name owner created_at } }`;
-        const er = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: eq }) });
-        const ed = await er.json();
-        const events = ed?.data?.blob_events || [];
-        setRecentEvents(events.map((e: any) => ({ name: e.blob_name, owner: e.owner, time: new Date(e.created_at).toLocaleTimeString() })));
-      } catch {}
     } catch {}
   }
 
-    async function lookup() {
+  async function lookup() {
     if (!addr.startsWith("0x")) { alert("Please enter a valid address starting with 0x"); return; }
     setLoading(true);
     setShown(true);
+    setSearchAddr(addr);
     try {
       const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${addr}"}}) { amount asset_type } }`;
       const r = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
@@ -107,20 +113,87 @@ export default function BlobScanClient() {
       const usdB = balances.find((b: any) => b.asset_type.includes("1b18363"));
       setApt(aptB ? (aptB.amount / 100000000).toFixed(2) + " APT" : "0 APT");
       setUsd(usdB ? (usdB.amount / 100000000).toFixed(2) + " ShelbyUSD" : "0 ShelbyUSD");
-      setAddress(addr);
-    } catch {}
-    try {
-      const br = await fetch(`/api/blobs/${addr}`);
-      const bdata = await br.json();
-      const txt = bdata.raw || "";
-      const lines = txt.split("\n").filter((l: string) => l.match(/\S+\.\S+\s+\d/));
-      const parsed = lines.map((l: string) => {
-        const parts = l.trim().split(/\s{2,}/);
-        return { name: parts[0] || "", size: parts[1] || "", expires: parts.slice(2).join(" ") || "" };
-      });
-      setBlobs(parsed);
     } catch {}
     setLoading(false);
+  }
+
+  async function handleDownload(blobNameSuffix: string) {
+    if (!searchAddr) return;
+    try {
+      setDownloading(blobNameSuffix);
+      const blob = await shelbyClient.download({
+        account: searchAddr,
+        blobName: blobNameSuffix,
+      });
+
+      // Read the stream
+      const reader = blob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.length;
+      }
+      const data = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Trigger browser download
+      const downloadBlob = new Blob([data]);
+      const url = URL.createObjectURL(downloadBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = blobNameSuffix.split("/").pop() || blobNameSuffix;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`Download failed: ${err?.message || "Unknown error"}`);
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function handlePreviewBlob(blobNameSuffix: string) {
+    if (!searchAddr) return;
+    try {
+      const blob = await shelbyClient.download({
+        account: searchAddr,
+        blobName: blobNameSuffix,
+      });
+
+      const reader = blob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.length;
+      }
+      const data = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
+      const mimeTypes: Record<string, string> = {
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+        gif: "image/gif", webp: "image/webp", jfif: "image/jpeg",
+      };
+      const mime = mimeTypes[ext] || "image/png";
+      const imageBlob = new Blob([data], { type: mime });
+      const url = URL.createObjectURL(imageBlob);
+      setModalSrc(url);
+    } catch (err: any) {
+      alert(`Preview failed: ${err?.message || "Unknown error"}`);
+    }
   }
 
   const card = { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "20px", marginBottom: "16px" } as const;
@@ -129,13 +202,13 @@ export default function BlobScanClient() {
     <div style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", padding: "32px", paddingBottom: "120px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
       <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, opacity: 0.08, pointerEvents: "none" }} />
       {modalSrc && (
-        <div onClick={() => setModalSrc("")} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
+        <div onClick={() => { URL.revokeObjectURL(modalSrc); setModalSrc(""); }} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
           <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} />
         </div>
       )}
       <h1 style={{ color: "#7dd3a8", marginBottom: "4px" }}>BlobScan</h1>
       <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>
-      <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>shelbynet</div>
+        <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>shelbynet · Real blob explorer</div>
       </div>
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
@@ -163,31 +236,50 @@ export default function BlobScanClient() {
               <div><div style={{ fontSize: "12px", color: "#666" }}>APT</div><div style={{ fontSize: "24px", color: "#7dd3a8", fontWeight: "bold" }}>{loading ? "..." : apt}</div></div>
               <div><div style={{ fontSize: "12px", color: "#666" }}>ShelbyUSD</div><div style={{ fontSize: "24px", color: "#7dd3a8", fontWeight: "bold" }}>{loading ? "..." : usd}</div></div>
             </div>
-            <div style={{ fontSize: "11px", color: "#444", wordBreak: "break-all", marginTop: "8px" }}>{address}</div>
+            <div style={{ fontSize: "11px", color: "#444", wordBreak: "break-all", marginTop: "8px" }}>{searchAddr}</div>
           </div>
+
           <div style={card}>
-            <h2 style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>Blob List</h2>
-            {blobs.length === 0 ? (
-              <div style={{ fontSize: "13px", color: "#444" }}>No blobs found.</div>
-            ) : blobs.map((b, i) => {
-              const isImage = b.name.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
-              const downloadUrl = `/api/download/${addr}/${encodeURIComponent(b.name)}`;
-              const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${addr}/blobs?name=${encodeURIComponent(b.name)}`;
+            <h2 style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>
+              Blob List {accountBlobs ? `(${accountBlobs.length})` : ""}
+            </h2>
+            {blobsLoading ? (
+              <div style={{ fontSize: "13px", color: "#7dd3a8" }}>Loading blobs from Shelby network...</div>
+            ) : !accountBlobs || accountBlobs.length === 0 ? (
+              <div style={{ fontSize: "13px", color: "#444" }}>No blobs found for this address.</div>
+            ) : accountBlobs.map((blob, i) => {
+              const isImage = blob.blobNameSuffix.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
+              const isExpired = blob.expirationMicros < Date.now() * 1000;
+              const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${searchAddr}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`;
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #2a2a2a", padding: "10px 0" }}>
                   {isImage ? (
-                    <img src={downloadUrl} onClick={() => setModalSrc(downloadUrl)}
-                      style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "4px", border: "1px solid #2a2a2a", cursor: "zoom-in" }}
-                      onError={e => (e.target as any).style.display = "none"} />
+                    <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
+                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "zoom-in", color: "#7dd3a8" }}>🖼</div>
                   ) : (
                     <div style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>
                   )}
                   <div style={{ flex: 1 }}>
-                    <span style={{ color: "#a0c4ff", fontSize: "13px" }}>{b.name}</span>
-                    <div style={{ color: "#555", fontSize: "11px" }}>{b.size}{b.expires ? ` · Expires: ${b.expires}` : ""}</div>
+                    <span style={{ color: "#a0c4ff", fontSize: "13px" }}>{blob.blobNameSuffix}</span>
+                    <div style={{ color: "#555", fontSize: "11px" }}>
+                      {formatSize(blob.size)}
+                      {" · "}
+                      {isExpired
+                        ? <span style={{ color: "#f87171" }}>Expired</span>
+                        : <>Expires: {new Date(blob.expirationMicros / 1000).toLocaleString()}</>
+                      }
+                      {blob.isWritten && <span style={{ color: "#4ade80", marginLeft: "6px" }}>● Written</span>}
+                      {blob.isDeleted && <span style={{ color: "#f87171", marginLeft: "6px" }}>● Deleted</span>}
+                    </div>
                   </div>
                   <a href={explorerUrl} target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a2a", borderRadius: "4px", marginRight: "4px" }}>Explorer</a>
-                  <a href={downloadUrl} download={b.name} style={{ color: "#7dd3a8", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px" }}>Download</a>
+                  {!isExpired && blob.isWritten && (
+                    <button onClick={() => handleDownload(blob.blobNameSuffix)}
+                      disabled={downloading === blob.blobNameSuffix}
+                      style={{ color: "#7dd3a8", fontSize: "11px", background: "transparent", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px", cursor: "pointer", fontFamily: "monospace", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1 }}>
+                      {downloading === blob.blobNameSuffix ? "Downloading..." : "Download"}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -195,17 +287,6 @@ export default function BlobScanClient() {
         </>
       )}
 
-      {recentEvents.length > 0 && (
-        <div style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "20px", marginBottom: "16px" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", textTransform: "uppercase" as const, letterSpacing: "1px" }}>Recent Network Events</h2>
-          {recentEvents.map((e, i) => (
-            <div key={i} style={{ borderBottom: "1px solid #2a2a2a", padding: "8px 0", fontSize: "12px" }}>
-              <span style={{ color: "#a0c4ff" }}>{e.name}</span>
-              <div style={{ color: "#555" }}>{e.owner.slice(0, 10)}...{e.owner.slice(-8)} · {e.time}</div>
-            </div>
-          ))}
-        </div>
-      )}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: "800px", margin: "0 auto", background: "#1a1a1a", borderTop: "1px solid #2a2a2a", padding: "12px 20px", zIndex: 100 }}>
         <h2 style={{ margin: "0 0 6px", fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>Network Status</h2>
         {netStatus ? (

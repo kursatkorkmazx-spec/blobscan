@@ -1,12 +1,16 @@
 "use client";
 import { useState, useCallback } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-
-const DEMO_ADDRESS = "0x3882ef9ee7be69abbe4f7465b0b05ec0fce7509bd2464cc2ba5c3b0b3e13c4e4";
-
-function generateId(): string {
-  return "cipher_" + Math.random().toString(36).slice(2, 10);
-}
+import { useAccountBlobs } from "@shelby-protocol/react";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
+import {
+  createBlobKey,
+  createDefaultErasureCodingProvider,
+  expectedTotalChunksets,
+  generateCommitments,
+  ShelbyBlobClient,
+} from "@shelby-protocol/sdk/browser";
+import { shelbyClient } from "../shelbyClient";
 
 function generateKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -43,6 +47,27 @@ function fileType(name: string): string {
   return types[ext] || ext.toUpperCase() || "File";
 }
 
+async function encryptData(data: Uint8Array<ArrayBuffer>, password: string): Promise<Uint8Array<ArrayBuffer>> {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new Uint8Array(data) as unknown as BufferSource);
+  // Format: [salt(16)] [iv(12)] [ciphertext]
+  const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+  result.set(salt, 0);
+  result.set(iv, salt.length);
+  result.set(new Uint8Array(encrypted), salt.length + iv.length);
+  return result;
+}
+
 interface VaultRecord {
   id: string;
   name: string;
@@ -56,6 +81,8 @@ interface VaultRecord {
   downloaded: boolean;
   expiration: string;
   shareLink?: string;
+  blobName?: string;
+  owner?: string;
 }
 
 interface FileInfo {
@@ -64,7 +91,7 @@ interface FileInfo {
   preview: string | null;
 }
 
-type EventType = "WALLET_CONNECTED" | "WALLET_DISCONNECTED" | "FILE_SELECTED" | "FILE_ENCRYPTED" | "UPLOAD_STARTED" | "UPLOAD_COMPLETED" | "RECORD_PERSISTED" | "LINK_CREATED" | "VAULT_WIPED" | "DOWNLOAD_CONSUMED";
+type EventType = "WALLET_CONNECTED" | "WALLET_DISCONNECTED" | "FILE_SELECTED" | "FILE_ENCRYPTED" | "UPLOAD_STARTED" | "UPLOAD_COMPLETED" | "UPLOAD_FAILED" | "RECORD_PERSISTED" | "LINK_CREATED" | "VAULT_WIPED" | "DOWNLOAD_CONSUMED" | "BLOB_DOWNLOADING" | "BLOB_DOWNLOADED" | "TX_SUBMITTED" | "TX_CONFIRMED" | "BLOB_REGISTERED" | "BLOB_UPLOADED";
 
 interface ProtocolEvent {
   type: EventType;
@@ -73,8 +100,8 @@ interface ProtocolEvent {
 }
 
 export default function UploadClient() {
-  const { account, connect, wallets, connected, disconnect } = useWallet();
-  const [demoMode, setDemoMode] = useState(false);
+  const wallet = useWallet();
+  const { account, connect, wallets, connected, disconnect } = wallet;
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
   const [expiration, setExpiration] = useState("86400");
   const [oneDownload, setOneDownload] = useState(false);
@@ -96,9 +123,18 @@ export default function UploadClient() {
   });
   const [vaultFilter, setVaultFilter] = useState<"ALL" | "ACTIVE" | "EXPIRED" | "CONSUMED">("ALL");
 
-  const isConnected = connected || demoMode;
-  const displayAddress = demoMode ? DEMO_ADDRESS : account?.address?.toString();
+  const [isUploading, setIsUploading] = useState(false);
+  const [txHash, setTxHash] = useState("");
+
+  const displayAddress = account?.address?.toString();
   const strength = passwordStrength(password);
+
+  // Query account blobs for vault refresh
+  const { data: accountBlobs, refetch: refetchBlobs } = useAccountBlobs({
+    client: shelbyClient,
+    account: displayAddress || "",
+    enabled: !!displayAddress,
+  });
 
   function addEvent(type: EventType, message: string) {
     const e: ProtocolEvent = { type, message, time: new Date().toLocaleTimeString() };
@@ -132,44 +168,251 @@ export default function UploadClient() {
   }, []);
 
   const handleUpload = async () => {
-    if (!isConnected || fileInfos.length === 0) return;
+    if (!connected || !account || fileInfos.length === 0) return;
+
     const finalPassword = autoKey ? generateKey() : password;
-    setStatus("Processing...");
-    addEvent("UPLOAD_STARTED", `Uploading ${fileInfos.length} file(s)`);
-    await new Promise(r => setTimeout(r, 600));
+    setStatus("Processing files...");
+    setIsUploading(true);
+    setTxHash("");
+    addEvent("UPLOAD_STARTED", `Uploading ${fileInfos.length} file(s) to Shelby network`);
 
-    if (encrypt && finalPassword) {
-      setStatus("Encrypting (AES-256-GCM)...");
-      addEvent("FILE_ENCRYPTED", "AES-256-GCM encryption applied");
-      await new Promise(r => setTimeout(r, 900));
+    try {
+      // Calculate expiration in microseconds
+      const expirationSeconds = parseInt(expiration);
+      const expirationMicros = (Date.now() + expirationSeconds * 1000) * 1000;
+      const accountAddress = account.address.toString();
+
+      // Prepare blobs
+      const blobsToUpload: { blobName: string; blobData: Uint8Array }[] = [];
+
+      for (const fi of fileInfos) {
+        let data = new Uint8Array(await fi.file.arrayBuffer());
+
+        // Encrypt if enabled
+        if (encrypt && finalPassword) {
+          setStatus(`Encrypting ${fi.file.name} (AES-256-GCM)...`);
+          addEvent("FILE_ENCRYPTED", `AES-256-GCM encryption applied to ${fi.file.name}`);
+          data = await encryptData(data, finalPassword);
+        }
+
+        blobsToUpload.push({
+          blobName: fi.file.name,
+          blobData: data,
+        });
+      }
+
+      // Step 1: Check which blobs already exist
+      setStatus("Checking existing blobs...");
+      const existingBlobs = await shelbyClient.coordination.getBlobs({
+        where: {
+          blob_name: {
+            _in: blobsToUpload.map((blob) =>
+              createBlobKey({
+                account: accountAddress,
+                blobName: blob.blobName,
+              })
+            ),
+          },
+        },
+      });
+
+      const blobsToRegister = blobsToUpload.filter(
+        (blob) =>
+          !existingBlobs.some(
+            (existingBlob) =>
+              existingBlob.name ===
+              createBlobKey({
+                account: accountAddress,
+                blobName: blob.blobName,
+              })
+          )
+      );
+
+      // Step 2: Register new blobs on-chain (this sends the TX!)
+      if (blobsToRegister.length > 0) {
+        setStatus("Generating erasure coding commitments...");
+        addEvent("BLOB_REGISTERED", `Generating commitments for ${blobsToRegister.length} blob(s)`);
+
+        const provider = await createDefaultErasureCodingProvider();
+        const blobCommitments = await Promise.all(
+          blobsToRegister.map(async (blob) =>
+            generateCommitments(provider, blob.blobData)
+          )
+        );
+
+        const chunksetSize = provider.config.erasure_k * provider.config.chunkSizeBytes;
+
+        setStatus("Waiting for wallet approval...");
+        addEvent("TX_SUBMITTED", "Sending register blob transaction via Petra...");
+
+        // This triggers the Petra wallet popup for TX approval!
+        const pendingTx = await wallet.signAndSubmitTransaction({
+          data: ShelbyBlobClient.createBatchRegisterBlobsPayload({
+            account: AccountAddress.from(accountAddress),
+            expirationMicros,
+            blobs: blobsToRegister.map((blob, index) => ({
+              blobName: blob.blobName,
+              blobSize: blob.blobData.length,
+              blobMerkleRoot: blobCommitments[index].blob_merkle_root,
+              numChunksets: expectedTotalChunksets(
+                blob.blobData.length,
+                chunksetSize
+              ),
+            })),
+            encoding: provider.config.enumIndex,
+          }),
+        });
+
+        const hash = pendingTx.hash;
+        setTxHash(hash);
+        addEvent("TX_SUBMITTED", `TX submitted: ${hash}`);
+
+        setStatus("Waiting for TX confirmation...");
+        await shelbyClient.coordination.aptos.waitForTransaction({
+          transactionHash: hash,
+        });
+
+        addEvent("TX_CONFIRMED", `TX confirmed: ${hash}`);
+        setStatus("Transaction confirmed! Uploading blob data...");
+      } else {
+        addEvent("BLOB_REGISTERED", "Blobs already registered on-chain, skipping TX");
+      }
+
+      // Step 3: Upload blob data to RPC
+      setStatus("Uploading blob data to storage providers...");
+      for (const blob of blobsToUpload) {
+        addEvent("BLOB_UPLOADED", `Uploading ${blob.blobName} to RPC...`);
+        await shelbyClient.rpc.putBlob({
+          account: accountAddress,
+          blobName: blob.blobName,
+          blobData: blob.blobData,
+        });
+        addEvent("BLOB_UPLOADED", `${blob.blobName} uploaded to storage providers`);
+      }
+
+      // Create vault records
+      const newRecords: VaultRecord[] = fileInfos.map((fi) => {
+        const ownerAddr = accountAddress;
+        const link = `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}${encrypt && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}`;
+        return {
+          id: `blob_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          name: fi.file.name,
+          size: fi.file.size,
+          hash: fi.hash,
+          date: new Date().toLocaleString(),
+          encrypted: encrypt && !!finalPassword,
+          key: encrypt ? finalPassword : undefined,
+          status: "ACTIVE" as const,
+          oneDownload,
+          downloaded: false,
+          expiration: expirationSeconds === 3600 ? "1 hour" : expirationSeconds === 86400 ? "1 day" : expirationSeconds === 604800 ? "7 days" : "30 days",
+          shareLink: link,
+          blobName: fi.file.name,
+          owner: ownerAddr,
+        };
+      });
+
+      const updated = [...vault, ...newRecords];
+      saveVault(updated);
+      addEvent("UPLOAD_COMPLETED", `${fileInfos.length} file(s) uploaded successfully`);
+      addEvent("RECORD_PERSISTED", `${fileInfos.length} record(s) saved to vault`);
+      addEvent("LINK_CREATED", `Share link generated`);
+
+      setShareLink(newRecords[0]?.shareLink || "");
+      setFileInfos([]);
+      setStatus("Upload complete!");
+
+      // Refresh blob list
+      refetchBlobs();
+
+      setTimeout(() => { setStatus(""); setShareLink(""); }, 12000);
+    } catch (err: any) {
+      const msg = err?.message || "Upload failed";
+      setStatus(`Error: ${msg}`);
+      addEvent("UPLOAD_FAILED", msg);
+      console.error("Upload error:", err);
+      setTimeout(() => setStatus(""), 8000);
+    } finally {
+      setIsUploading(false);
     }
+  };
 
-    setStatus("Uploading to Shelby network...");
-    await new Promise(r => setTimeout(r, 1200));
+  const handleDownloadBlob = async (record: VaultRecord) => {
+    if (!record.blobName || !record.owner) return;
+    try {
+      addEvent("BLOB_DOWNLOADING", `Downloading ${record.name} from Shelby network...`);
+      setStatus(`Downloading ${record.name}...`);
 
-    const newRecords: VaultRecord[] = fileInfos.map(fi => {
-      const id = generateId();
-      const link = `${window.location.origin}/upload?file=${id}${encrypt && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}`;
-      return {
-        id, name: fi.file.name, size: fi.file.size, hash: fi.hash,
-        date: new Date().toLocaleString(), encrypted: encrypt && !!finalPassword,
-        key: encrypt ? finalPassword : undefined, status: "ACTIVE",
-        oneDownload, downloaded: false,
-        expiration: expiration === "3600" ? "1 hour" : expiration === "86400" ? "1 day" : expiration === "604800" ? "7 days" : "30 days",
-        shareLink: link
-      };
-    });
+      const blob = await shelbyClient.download({
+        account: record.owner,
+        blobName: record.blobName,
+      });
 
-    const updated = [...vault, ...newRecords];
-    saveVault(updated);
-    addEvent("UPLOAD_COMPLETED", `${fileInfos.length} file(s) uploaded successfully`);
-    addEvent("RECORD_PERSISTED", `${fileInfos.length} record(s) saved to vault`);
-    addEvent("LINK_CREATED", `Share link generated`);
+      // Read the stream into a Uint8Array
+      const reader = blob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.length;
+      }
+      let data = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.length;
+      }
 
-    setShareLink(newRecords[0]?.shareLink || "");
-    setFileInfos([]);
-    setStatus("Upload complete!");
-    setTimeout(() => { setStatus(""); setShareLink(""); }, 8000);
+      // Decrypt if encrypted and key available
+      if (record.encrypted && record.key) {
+        try {
+          const salt = data.slice(0, 16);
+          const iv = data.slice(16, 28);
+          const ciphertext = data.slice(28);
+          const enc = new TextEncoder();
+          const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(record.key), "PBKDF2", false, ["deriveKey"]);
+          const cryptoKey = await crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+            keyMaterial,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["decrypt"]
+          );
+          const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext);
+          data = new Uint8Array(decrypted);
+        } catch {
+          addEvent("UPLOAD_FAILED", "Decryption failed - wrong key?");
+        }
+      }
+
+      // Trigger browser download
+      const downloadBlob = new Blob([data]);
+      const url = URL.createObjectURL(downloadBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = record.name;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      addEvent("BLOB_DOWNLOADED", `${record.name} downloaded successfully`);
+
+      // Mark as consumed if oneDownload
+      if (record.oneDownload) {
+        const updated = vault.map(r =>
+          r.id === record.id ? { ...r, status: "CONSUMED" as const, downloaded: true } : r
+        );
+        saveVault(updated);
+        addEvent("DOWNLOAD_CONSUMED", `${record.name} consumed after download`);
+      }
+
+      setStatus("");
+    } catch (err: any) {
+      setStatus(`Error: ${err?.message || "Download failed"}`);
+      addEvent("UPLOAD_FAILED", `Download failed: ${err?.message}`);
+      setTimeout(() => setStatus(""), 5000);
+    }
   };
 
   function panicWipe() {
@@ -218,24 +461,24 @@ export default function UploadClient() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <a href="/" style={{ color: "#555", textDecoration: "none", fontSize: "13px" }}>← Back to BlobScan</a>
-        {isConnected && (
+        {connected && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ background: "#1a1a1a", border: `1px solid ${demoMode ? "#3a3010" : "#1a3a2a"}`, borderRadius: "6px", padding: "6px 12px", fontSize: "11px" }}>
-              <span style={{ color: demoMode ? "#facc15" : "#4ade80" }}>{demoMode ? "⚗ Petra Test" : "● Synced"}</span>
+            <div style={{ background: "#1a1a1a", border: "1px solid #1a3a2a", borderRadius: "6px", padding: "6px 12px", fontSize: "11px" }}>
+              <span style={{ color: "#4ade80" }}>● Synced</span>
               <span style={{ color: "#555", marginLeft: "6px" }}>{displayAddress?.slice(0, 8)}...{displayAddress?.slice(-6)}</span>
             </div>
-            <button onClick={() => { if(demoMode) setDemoMode(false); else disconnect(); addEvent("WALLET_DISCONNECTED", "Wallet disconnected"); }}
+            <button onClick={() => { disconnect(); addEvent("WALLET_DISCONNECTED", "Wallet disconnected"); }}
               style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Disconnect</button>
           </div>
         )}
       </div>
 
       <h1 style={{ color: "#7dd3a8", marginTop: "8px", marginBottom: "4px" }}>Upload to Shelby</h1>
-      <p style={{ color: "#666", fontSize: "13px", marginBottom: "24px" }}>Decentralized hot storage · AES-256-GCM encryption · SHA-256 integrity</p>
+      <p style={{ color: "#666", fontSize: "13px", marginBottom: "24px" }}>Decentralized hot storage · AES-256-GCM encryption · SHA-256 integrity · Real blob uploads</p>
 
-      {!isConnected ? (
+      {!connected ? (
         <div style={card}>
-          <p style={{ color: "#888", fontSize: "13px", margin: "0 0 16px" }}>Connect your wallet to continue.</p>
+          <p style={{ color: "#888", fontSize: "13px", margin: "0 0 16px" }}>Connect your Petra wallet to upload files to the Shelby network.</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {wallets.filter(w => w.name === "Petra").map((w) => (
               <button key={w.name} onClick={() => { connect(w.name); addEvent("WALLET_CONNECTED", `${w.name} connected`); }} style={btn}>Connect Petra</button>
@@ -243,8 +486,6 @@ export default function UploadClient() {
             {wallets.filter(w => w.name === "Petra").length === 0 && (
               <p style={{ color: "#555", fontSize: "12px" }}>No wallets detected. Install <a href="https://petra.app" target="_blank" style={{ color: "#7dd3a8" }}>Petra</a>.</p>
             )}
-            <button onClick={() => { setDemoMode(true); addEvent("WALLET_CONNECTED", "Petra Test mode activated"); }}
-              style={{ ...btn, background: "transparent", color: "#7dd3a8", border: "1px solid #7dd3a8" }}>Petra Test</button>
           </div>
         </div>
       ) : (
@@ -325,16 +566,27 @@ export default function UploadClient() {
                     <option value="604800">7 days</option>
                     <option value="2592000">30 days</option>
                   </select>
-                  <button onClick={handleUpload} disabled={fileInfos.length === 0} style={{ ...btn, flex: 1, opacity: fileInfos.length === 0 ? 0.5 : 1 }}>
-                    {status || "Upload"}
+                  <button onClick={handleUpload} disabled={fileInfos.length === 0 || isUploading} style={{ ...btn, flex: 1, opacity: fileInfos.length === 0 || isUploading ? 0.5 : 1 }}>
+                    {isUploading ? "Uploading to Shelby..." : status || "Upload to Shelby Network"}
                   </button>
                 </div>
 
                 {status && <div style={{ fontSize: "12px", color: status.startsWith("Error") ? "#f87171" : "#4ade80", marginBottom: "8px" }}>{status}</div>}
 
+                {txHash && (
+                  <div style={{ background: "#0a0a1a", border: "1px solid #1a1a3a", borderRadius: "6px", padding: "12px", marginBottom: "8px" }}>
+                    <div style={{ fontSize: "11px", color: "#a0c4ff", marginBottom: "6px" }}>Transaction Hash:</div>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <code style={{ flex: 1, fontSize: "10px", color: "#888", wordBreak: "break-all" }}>{txHash}</code>
+                      <button onClick={() => copyToClipboard(txHash)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>Copy</button>
+                      <a href={`https://explorer.shelby.xyz/shelbynet/txn/${txHash}`} target="_blank" style={{ color: "#a0c4ff", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a4a", borderRadius: "4px", whiteSpace: "nowrap" }}>View TX</a>
+                    </div>
+                  </div>
+                )}
+
                 {shareLink && (
                   <div style={{ background: "#0a1a0a", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "12px" }}>
-                    <div style={{ fontSize: "11px", color: "#4ade80", marginBottom: "6px" }}>Share Link:</div>
+                    <div style={{ fontSize: "11px", color: "#4ade80", marginBottom: "6px" }}>Share Link (blob stored on Shelby network):</div>
                     <div style={{ display: "flex", gap: "8px" }}>
                       <input readOnly value={shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#888", fontFamily: "monospace", fontSize: "10px" }} />
                       <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px" }}>Copy</button>
@@ -342,6 +594,26 @@ export default function UploadClient() {
                   </div>
                 )}
               </div>
+
+              {/* Show on-chain blobs for this account */}
+              {accountBlobs && accountBlobs.length > 0 && (
+                <div style={card}>
+                  <h2 style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", textTransform: "uppercase" as const, letterSpacing: "1px" }}>Your On-Chain Blobs ({accountBlobs.length})</h2>
+                  {accountBlobs.map((blob, i) => (
+                    <div key={i} style={{ borderBottom: "1px solid #2a2a2a", padding: "8px 0", fontSize: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <span style={{ color: "#a0c4ff" }}>{blob.blobNameSuffix}</span>
+                        <div style={{ color: "#555", fontSize: "11px" }}>
+                          {formatSize(blob.size)} · Expires: {new Date(blob.expirationMicros / 1000).toLocaleString()}
+                          {blob.isWritten && <span style={{ color: "#4ade80", marginLeft: "6px" }}>● Written</span>}
+                        </div>
+                      </div>
+                      <a href={`https://explorer.shelby.xyz/shelbynet/account/${displayAddress}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`}
+                        target="_blank" style={{ color: "#7dd3a8", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px" }}>Explorer</a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -378,12 +650,17 @@ export default function UploadClient() {
                     {r.oneDownload && <span style={{ marginLeft: "6px", color: "#f87171" }}>⚡ ONE-DL</span>}
                   </div>
                   <div style={{ fontSize: "10px", color: "#333", marginBottom: "6px" }}>ID: {r.id} · SHA-256: {r.hash.slice(0, 12)}...</div>
-                  {r.shareLink && (
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <input readOnly value={r.shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "10px" }} />
-                      <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Copy</button>
-                    </div>
-                  )}
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {r.shareLink && (
+                      <>
+                        <input readOnly value={r.shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "10px" }} />
+                        <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Copy</button>
+                      </>
+                    )}
+                    {r.status === "ACTIVE" && r.blobName && r.owner && (
+                      <button onClick={() => handleDownloadBlob(r)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "3px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Download</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -400,7 +677,7 @@ export default function UploadClient() {
               ) : events.map((e, i) => (
                 <div key={i} style={{ borderBottom: "1px solid #2a2a2a", padding: "6px 0", fontSize: "12px", display: "flex", gap: "10px" }}>
                   <span style={{ color: "#333", minWidth: "60px" }}>{e.time}</span>
-                  <span style={{ color: e.type.includes("ERROR") || e.type === "VAULT_WIPED" ? "#f87171" : e.type.includes("COMPLETED") ? "#4ade80" : "#7dd3a8", minWidth: "140px" }}>{e.type}</span>
+                  <span style={{ color: e.type.includes("FAILED") || e.type === "VAULT_WIPED" ? "#f87171" : e.type.includes("COMPLETED") || e.type.includes("DOWNLOADED") ? "#4ade80" : "#7dd3a8", minWidth: "140px" }}>{e.type}</span>
                   <span style={{ color: "#555" }}>{e.message}</span>
                 </div>
               ))}
