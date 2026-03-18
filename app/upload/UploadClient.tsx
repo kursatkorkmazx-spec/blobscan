@@ -129,11 +129,12 @@ export default function UploadClient() {
   const displayAddress = account?.address?.toString();
   const strength = passwordStrength(password);
 
-  // Query account blobs for vault refresh
+  // Query account blobs for vault refresh (may fail without API key)
   const { data: accountBlobs, refetch: refetchBlobs } = useAccountBlobs({
     client: shelbyClient,
     account: displayAddress || "",
     enabled: !!displayAddress,
+    retry: false,
   });
 
   function addEvent(type: EventType, message: string) {
@@ -201,32 +202,38 @@ export default function UploadClient() {
         });
       }
 
-      // Step 1: Check which blobs already exist
-      setStatus("Checking existing blobs...");
-      const existingBlobs = await shelbyClient.coordination.getBlobs({
-        where: {
-          blob_name: {
-            _in: blobsToUpload.map((blob) =>
-              createBlobKey({
-                account: accountAddress,
-                blobName: blob.blobName,
-              })
-            ),
+      // Step 1: Check which blobs already exist (try indexer, fallback to register all)
+      let blobsToRegister = blobsToUpload;
+      try {
+        setStatus("Checking existing blobs...");
+        const existingBlobs = await shelbyClient.coordination.getBlobs({
+          where: {
+            blob_name: {
+              _in: blobsToUpload.map((blob) =>
+                createBlobKey({
+                  account: accountAddress,
+                  blobName: blob.blobName,
+                })
+              ),
+            },
           },
-        },
-      });
+        });
 
-      const blobsToRegister = blobsToUpload.filter(
-        (blob) =>
-          !existingBlobs.some(
-            (existingBlob) =>
-              existingBlob.name ===
-              createBlobKey({
-                account: accountAddress,
-                blobName: blob.blobName,
-              })
-          )
-      );
+        blobsToRegister = blobsToUpload.filter(
+          (blob) =>
+            !existingBlobs.some(
+              (existingBlob) =>
+                existingBlob.name ===
+                createBlobKey({
+                  account: accountAddress,
+                  blobName: blob.blobName,
+                })
+            )
+        );
+      } catch (indexerErr) {
+        console.warn("Indexer query failed (API key may be required), registering all blobs:", indexerErr);
+        addEvent("BLOB_REGISTERED", "Indexer unavailable, registering all blobs");
+      }
 
       // Step 2: Register new blobs on-chain (this sends the TX!)
       if (blobsToRegister.length > 0) {

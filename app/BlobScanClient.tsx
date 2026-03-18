@@ -27,6 +27,7 @@ export default function BlobScanClient() {
     client: shelbyClient,
     account: searchAddr,
     enabled: !!searchAddr,
+    retry: false,
   });
 
   useEffect(() => {
