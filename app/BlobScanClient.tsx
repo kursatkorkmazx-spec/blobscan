@@ -150,6 +150,91 @@ export default function BlobScanClient() {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle share link URL params: ?address=0x...&blob=filename&key=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlAddr = params.get("address");
+    const urlBlob = params.get("blob");
+    if (urlAddr && urlAddr.startsWith("0x")) {
+      setAddr(urlAddr);
+      // Auto-lookup then auto-download
+      (async () => {
+        setLoading(true);
+        setShown(true);
+        setSearchAddr(urlAddr);
+        setBlobsLoading(true);
+        try {
+          const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${urlAddr}"}}) { amount asset_type } }`;
+          const r = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
+          const data = await r.json();
+          const balances = data.data?.current_fungible_asset_balances || [];
+          const aptB = balances.find((b: any) => b.asset_type === "0x1::aptos_coin::AptosCoin");
+          const usdB = balances.find((b: any) => b.asset_type.includes("1b18363"));
+          setApt(aptB ? (aptB.amount / 100000000).toFixed(2) + " APT" : "0 APT");
+          setUsd(usdB ? (usdB.amount / 100000000).toFixed(2) + " ShelbyUSD" : "0 ShelbyUSD");
+        } catch {}
+        setLoading(false);
+
+        const blobs = await fetchAccountBlobs(urlAddr);
+        setAccountBlobs(blobs);
+        setBlobsLoading(false);
+
+        // Auto-download if blob param specified
+        if (urlBlob) {
+          try {
+            setDownloading(urlBlob);
+            const blob = await shelbyClient.download({ account: urlAddr, blobName: urlBlob });
+            const reader = blob.readable.getReader();
+            const chunks: Uint8Array[] = [];
+            let totalLength = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              totalLength += value.length;
+            }
+            let data = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.length; }
+
+            // Decrypt if key provided
+            const urlKey = params.get("key");
+            if (urlKey) {
+              try {
+                const salt = data.slice(0, 16);
+                const iv = data.slice(16, 28);
+                const ciphertext = data.slice(28);
+                const enc = new TextEncoder();
+                const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(urlKey), "PBKDF2", false, ["deriveKey"]);
+                const cryptoKey = await crypto.subtle.deriveKey(
+                  { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+                  keyMaterial,
+                  { name: "AES-GCM", length: 256 },
+                  false,
+                  ["decrypt"]
+                );
+                const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertext);
+                data = new Uint8Array(decrypted);
+              } catch { /* decryption failed, download raw */ }
+            }
+
+            const downloadBlob = new Blob([data]);
+            const url = URL.createObjectURL(downloadBlob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = urlBlob.split("/").pop() || urlBlob;
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch (err: any) {
+            alert(`Download failed: ${err?.message || "Unknown error"}`);
+          } finally {
+            setDownloading(null);
+          }
+        }
+      })();
+    }
+  }, []);
+
   async function loadNetwork() {
     try {
       const r = await fetch("https://api.shelbynet.shelby.xyz/v1/");
