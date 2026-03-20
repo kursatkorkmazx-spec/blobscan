@@ -394,10 +394,13 @@ export default function BlobScanClient() {
       const headers: Record<string, string> = {};
       const apiKey = process.env.NEXT_PUBLIC_SHELBY_API_KEY;
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      console.log(`[preview] fetching: ${fetchUrl}`);
       const response = await fetch(fetchUrl, { headers });
+      console.log(`[preview] status=${response.status} content-length=${response.headers.get("content-length")} content-type=${response.headers.get("content-type")}`);
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
       const arrayBuffer = await response.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
+      console.log(`[preview] arrayBuffer byteLength=${arrayBuffer.byteLength}`);
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
       const videoExts = ["mp4", "webm", "mov"];
