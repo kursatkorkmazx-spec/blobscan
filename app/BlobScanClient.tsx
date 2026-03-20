@@ -520,50 +520,97 @@ export default function BlobScanClient() {
         </div>
       </aside>
 
+      {/* ── Wallet — always fixed top-right ── */}
+      <div style={{ position: "fixed", top: "12px", right: "24px", zIndex: 100, display: "flex", alignItems: "center", gap: "8px" }}>
+        {connected ? (
+          <>
+            {walletAddress && (
+              <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 10px" }}>My Wallet</button>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#161616", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
+              <span style={{ color: "#aaa" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
+            </div>
+            <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 10px", fontSize: "12px" }}>Disconnect</button>
+          </>
+        ) : (
+          <>
+            {wallets.filter(w => w.name === "Petra").map(w => (
+              <button key={w.name} onClick={() => connect(w.name)} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Connect Petra</button>
+            ))}
+            {wallets.filter(w => w.name === "Petra").length === 0 && (
+              <a href="https://petra.app" target="_blank" style={{ ...S.btnOutline, textDecoration: "none", padding: "5px 12px", fontSize: "12px" }}>Install Petra</a>
+            )}
+          </>
+        )}
+      </div>
+
       {/* ── Main ── */}
       <main style={S.main}>
 
-        {/* Top bar */}
-        <header style={S.topbar}>
-          {/* Search — left */}
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "0 12px", height: "32px", width: "280px" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
-                placeholder="Search wallet (0x…)"
-                style={{ background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "12px", width: "100%", fontFamily: "inherit" }} />
+        {/* Top bar with search — only when showing results */}
+        {shown && (
+          <header style={S.topbar}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "0 12px", height: "32px", width: "320px" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
+                  placeholder="Search wallet (0x…)"
+                  style={{ background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "12px", width: "100%", fontFamily: "inherit" }} />
+              </div>
+              <button onClick={lookup} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Search</button>
             </div>
-            <button onClick={lookup} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Search</button>
-          </div>
+          </header>
+        )}
 
-          {/* Wallet — far right */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
-            {connected ? (
-              <>
-                {walletAddress && (
-                  <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 10px" }}>My Wallet</button>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
-                  <span style={{ color: "#aaa" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
-                </div>
-                <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 10px", fontSize: "12px" }}>Disconnect</button>
-              </>
-            ) : (
-              <>
-                {wallets.filter(w => w.name === "Petra").map(w => (
-                  <button key={w.name} onClick={() => connect(w.name)} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Connect Petra</button>
-                ))}
-                {wallets.filter(w => w.name === "Petra").length === 0 && (
-                  <a href="https://petra.app" target="_blank" style={{ ...S.btnOutline, textDecoration: "none", padding: "5px 12px", fontSize: "12px" }}>Install Petra</a>
-                )}
-              </>
-            )}
-          </div>
-        </header>
+        {/* ── Hero page — when not searching ── */}
+        {!shown && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "72px 28px 80px" }}>
 
-        {/* Content — centered */}
-        <div style={{ ...S.content, maxWidth: "900px", width: "100%", margin: "0 auto" }}>
+            {/* BLOBSCAN title */}
+            <div style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: "clamp(22px, 4vw, 52px)",
+              color: "#39FF14",
+              letterSpacing: "2px",
+              marginBottom: "14px",
+              textShadow: "0 0 10px #39FF14, 0 0 30px rgba(57,255,20,0.5), 0 0 60px rgba(57,255,20,0.2)",
+              lineHeight: 1.4,
+            }}>
+              BLOBSCAN
+            </div>
+            <div style={{ fontSize: "13px", color: "#777", marginBottom: "36px" }}>Real blob explorer · Shelby Network</div>
+
+            {/* Search bar */}
+            <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "500px", marginBottom: "18px" }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "10px", padding: "0 14px", height: "44px" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
+                  placeholder="Enter wallet address (0x…)"
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "14px", fontFamily: "inherit" }} />
+              </div>
+              <button onClick={lookup} style={{ ...S.btnGreen, padding: "0 22px", fontSize: "14px" }}>Search</button>
+            </div>
+
+            {/* Typewriter */}
+            <div style={{ fontSize: "13px", color: "#666", minHeight: "22px", marginBottom: "44px" }}>
+              <span ref={twRef} style={{ color: "#4ade80" }}></span>
+              <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
+            </div>
+
+            {/* Upload CTA */}
+            <div style={{ ...S.card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderColor: "#1f2a1f", width: "100%", maxWidth: "500px", textAlign: "left" }}>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#e5e5e5", marginBottom: "3px" }}>Upload Files to Shelby Network</div>
+                <div style={{ fontSize: "12px", color: "#888" }}>Connect Petra wallet · Decentralized hot storage · Sub-second retrieval</div>
+              </div>
+              <a href="/upload" style={{ ...S.btnGreen, textDecoration: "none", display: "inline-block" }}>Upload Files →</a>
+            </div>
+          </div>
+        )}
+
+        {/* Content — results + modals */}
+        <div style={shown ? { ...S.content, maxWidth: "900px", width: "100%", margin: "0 auto" } : {}}>
 
           {/* Modals */}
           {modalSrc && (
@@ -613,40 +660,6 @@ export default function BlobScanClient() {
             <div style={{ background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: "10px", padding: "14px 18px", marginBottom: "16px" }}>
               <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>⚡ Link Already Used — </span>
               <span style={{ color: "#666", fontSize: "12px" }}>This was a one-time download link.</span>
-            </div>
-          )}
-
-          {/* Hero + Upload CTA — centered vertically when not searching */}
-          {!shown && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 84px)", textAlign: "center" }}>
-              {/* Hero / typewriter */}
-              <div style={{ marginBottom: "40px", width: "100%" }}>
-                <div style={{
-                  fontFamily: "'Press Start 2P', monospace",
-                  fontSize: "clamp(20px, 3.5vw, 38px)",
-                  color: "#39FF14",
-                  letterSpacing: "2px",
-                  marginBottom: "16px",
-                  textShadow: "0 0 10px #39FF14, 0 0 30px rgba(57,255,20,0.5), 0 0 60px rgba(57,255,20,0.2)",
-                  lineHeight: 1.4,
-                }}>
-                  BLOBSCAN
-                </div>
-                <div style={{ fontSize: "13px", color: "#777", marginBottom: "32px" }}>Real blob explorer · Shelby Network</div>
-                <div style={{ fontSize: "13px", color: "#666", minHeight: "20px" }}>
-                  <span ref={twRef} style={{ color: "#4ade80" }}></span>
-                  <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
-                </div>
-              </div>
-
-              {/* Upload CTA */}
-              <div style={{ ...S.card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderColor: "#1f2a1f", width: "100%", maxWidth: "600px", textAlign: "left" }}>
-                <div>
-                  <div style={{ fontSize: "14px", fontWeight: 600, color: "#e5e5e5", marginBottom: "3px" }}>Upload Files to Shelby Network</div>
-                  <div style={{ fontSize: "12px", color: "#888" }}>Connect Petra wallet · Decentralized hot storage · Sub-second retrieval</div>
-                </div>
-                <a href="/upload" style={{ ...S.btnGreen, textDecoration: "none", display: "inline-block" }}>Upload Files →</a>
-              </div>
             </div>
           )}
 
