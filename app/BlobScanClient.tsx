@@ -465,7 +465,7 @@ export default function BlobScanClient() {
   // ─── Styles ──────────────────────────────────────────────────────────────────
   const S = {
     sidebar: { width: "190px", minHeight: "100vh", background: "#111", borderRight: "1px solid #1f1f1f", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 } as const,
-    main: { marginLeft: "190px", minHeight: "100vh", display: "flex", flexDirection: "column" } as const,
+    main: { marginLeft: "190px", minHeight: "100vh", display: "flex", flexDirection: "column", flex: 1, width: "calc(100% - 190px)" } as const,
     topbar: { background: "#0d0d0d", borderBottom: "1px solid #1f1f1f", padding: "0 24px", height: "52px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 40 } as const,
     content: { padding: "28px 28px 80px", flex: 1 } as const,
     input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "8px 14px", color: "#e5e5e5", fontSize: "13px", outline: "none", fontFamily: "inherit" } as const,
@@ -565,7 +565,7 @@ export default function BlobScanClient() {
 
         {/* ── Hero page — when not searching ── */}
         {!shown && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "72px 28px 80px" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "72px 28px 80px", width: "100%" }}>
 
             {/* BLOBSCAN title */}
             <div style={{
@@ -579,10 +579,16 @@ export default function BlobScanClient() {
             }}>
               BLOBSCAN
             </div>
-            <div style={{ fontSize: "13px", color: "#777", marginBottom: "36px" }}>Real blob explorer · Shelby Network</div>
+            <div style={{ fontSize: "13px", color: "#777", marginBottom: "24px" }}>Real blob explorer · Shelby Network</div>
+
+            {/* Typewriter */}
+            <div style={{ fontSize: "13px", color: "#666", minHeight: "22px", marginBottom: "28px" }}>
+              <span ref={twRef} style={{ color: "#4ade80" }}></span>
+              <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
+            </div>
 
             {/* Search bar */}
-            <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "500px", marginBottom: "18px" }}>
+            <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "500px", marginBottom: "36px" }}>
               <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "10px", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "10px", padding: "0 14px", height: "44px" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
@@ -590,12 +596,6 @@ export default function BlobScanClient() {
                   style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "14px", fontFamily: "inherit" }} />
               </div>
               <button onClick={lookup} style={{ ...S.btnGreen, padding: "0 22px", fontSize: "14px" }}>Search</button>
-            </div>
-
-            {/* Typewriter */}
-            <div style={{ fontSize: "13px", color: "#666", minHeight: "22px", marginBottom: "44px" }}>
-              <span ref={twRef} style={{ color: "#4ade80" }}></span>
-              <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
             </div>
 
             {/* Upload CTA */}
