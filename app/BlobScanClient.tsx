@@ -392,21 +392,8 @@ export default function BlobScanClient() {
         blobName: blobNameSuffix,
       });
 
-      const reader = shelbyBlob.readable.getReader();
-      const chunks: Uint8Array[] = [];
-      let totalLength = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        totalLength += value.byteLength;
-      }
-      const data = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        data.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
+      const arrayBuffer = await new Response(shelbyBlob.readable).arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
       const videoExts = ["mp4", "webm", "mov"];
@@ -421,13 +408,13 @@ export default function BlobScanClient() {
       const isVideo = videoExts.includes(ext);
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
-      if (totalLength === 0) {
-        alert("Preview failed: received 0 bytes from the network.");
+      if (data.byteLength === 0) {
+        alert(`Preview failed: received 0 bytes (content-length: ${shelbyBlob.contentLength}).`);
         return;
       }
       const mediaBlob = new Blob([data], { type: mime });
       const url = URL.createObjectURL(mediaBlob);
-      console.log(`[preview] ext=${ext} mime=${mime} size=${totalLength} url=${url}`);
+      console.log(`[preview] ext=${ext} mime=${mime} size=${data.byteLength} url=${url}`);
       setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
     } catch (err: any) {
