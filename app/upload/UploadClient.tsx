@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import QRCode from "qrcode";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import {
   createBlobKey,
@@ -182,6 +183,12 @@ export default function UploadClient() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [txHash, setTxHash] = useState("");
+  const [qrModal, setQrModal] = useState<{ url: string; dataUrl: string } | null>(null);
+
+  async function showQR(url: string) {
+    const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#7dd3a8", light: "#0f0f0f" } });
+    setQrModal({ url, dataUrl });
+  }
 
   const displayAddress = account?.address?.toString();
   const strength = passwordStrength(password);
@@ -586,6 +593,26 @@ export default function UploadClient() {
         }, 50);
       }} />
 
+      {qrModal && (
+        <div onClick={() => setQrModal(null)} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.88)", zIndex: 1000, alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "10px", padding: "24px", maxWidth: "340px", width: "90%", textAlign: "center" as const }}>
+            <div style={{ fontSize: "13px", color: "#7dd3a8", marginBottom: "12px", fontWeight: "bold" }}>QR Kod — Share Link</div>
+            <img src={qrModal.dataUrl} style={{ width: "280px", height: "280px", borderRadius: "8px", border: "1px solid #2a2a2a" }} alt="QR Code" />
+            <div style={{ fontSize: "10px", color: "#444", marginTop: "10px", wordBreak: "break-all", maxHeight: "40px", overflow: "hidden" }}>{qrModal.url}</div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "center" }}>
+              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "6px 14px", color: "#7dd3a8", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Linki Kopyala</button>
+              <button onClick={() => {
+                const a = document.createElement("a");
+                a.href = qrModal.dataUrl;
+                a.download = "qr-code.png";
+                a.click();
+              }} style={{ background: "transparent", border: "1px solid #555", borderRadius: "4px", padding: "6px 14px", color: "#888", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>PNG İndir</button>
+              <button onClick={() => setQrModal(null)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Kapat</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <a href="/" style={{ color: "#555", textDecoration: "none", fontSize: "13px" }}>← Back to BlobScan</a>
         {connected && (
@@ -735,6 +762,7 @@ export default function UploadClient() {
                     <div style={{ display: "flex", gap: "8px" }}>
                       <input readOnly value={shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#888", fontFamily: "monospace", fontSize: "10px" }} />
                       <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px" }}>Copy</button>
+                      <button onClick={() => showQR(shareLink)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px" }}>QR</button>
                     </div>
                   </div>
                 )}
@@ -801,6 +829,7 @@ export default function UploadClient() {
                       <>
                         <input readOnly value={r.shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "10px" }} />
                         <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Copy</button>
+                        <button onClick={() => showQR(r.shareLink!)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>QR</button>
                       </>
                     )}
                     {r.status === "ACTIVE" && r.blobName && r.owner && (
