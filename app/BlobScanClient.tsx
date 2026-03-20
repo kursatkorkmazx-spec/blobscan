@@ -421,10 +421,7 @@ export default function BlobScanClient() {
       const isVideo = videoExts.includes(ext);
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
-      // For video/audio: omit MIME type so browser detects from magic bytes.
-      // A strict MIME type can cause MEDIA_ERR_SRC_NOT_SUPPORTED on codec mismatch.
-      const blobType = (isVideo || isAudio) ? "" : mime;
-      const mediaBlob = new Blob([data], { type: blobType });
+      const mediaBlob = new Blob([data], { type: mime });
       const url = URL.createObjectURL(mediaBlob);
       setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
@@ -453,12 +450,12 @@ export default function BlobScanClient() {
                 const v = e.currentTarget as HTMLVideoElement;
                 const code = v.error?.code;
                 const msgs: Record<number, string> = {
-                  1: "Yükleme iptal edildi",
-                  2: "Ağ hatası",
-                  3: "Video çözülemiyor (codec sorunu — H.264/H.265 uyumsuzluğu olabilir)",
-                  4: "Bu format bu tarayıcıda desteklenmiyor",
+                  1: "Load aborted",
+                  2: "Network error",
+                  3: "Decode error (unsupported codec — try H.264)",
+                  4: "Format not supported by this browser",
                 };
-                alert(`Video oynatılamadı (hata ${code ?? "?"}): ${msgs[code ?? 0] ?? "Bilinmeyen hata"}\n\nDosyayı indirip VLC ile açmayı deneyin.`);
+                alert(`Video playback failed (error ${code ?? "?"}): ${msgs[code ?? 0] ?? "Unknown error"}`);
               }}
             />
           ) : modalType === "audio" ? (
@@ -472,12 +469,12 @@ export default function BlobScanClient() {
                 const a = e.currentTarget as HTMLAudioElement;
                 const code = a.error?.code;
                 const msgs: Record<number, string> = {
-                  1: "Yükleme iptal edildi",
-                  2: "Ağ hatası",
-                  3: "Ses çözülemiyor (codec sorunu)",
-                  4: "Bu format bu tarayıcıda desteklenmiyor",
+                  1: "Load aborted",
+                  2: "Network error",
+                  3: "Decode error (unsupported codec)",
+                  4: "Format not supported by this browser",
                 };
-                alert(`Ses oynatılamadı (hata ${code ?? "?"}): ${msgs[code ?? 0] ?? "Bilinmeyen hata"}\n\nDosyayı indirip yerel oynatıcıda açmayı deneyin.`);
+                alert(`Audio playback failed (error ${code ?? "?"}): ${msgs[code ?? 0] ?? "Unknown error"}`);
               }}
             />
           ) : (
