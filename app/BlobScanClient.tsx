@@ -89,7 +89,10 @@ export default function BlobScanClient() {
   const [loading, setLoading] = useState(false);
   const [netStatus, setNetStatus] = useState<any>(null);
   const [modalSrc, setModalSrc] = useState("");
+  const [modalType, setModalType] = useState<"image" | "video">("image");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [loadingThumbs, setLoadingThumbs] = useState<Set<string>>(new Set());
   const [accountBlobs, setAccountBlobs] = useState<BlobInfo[]>([]);
   const [blobsLoading, setBlobsLoading] = useState(false);
   const [highlightBlob, setHighlightBlob] = useState<string | null>(null);
@@ -284,7 +287,7 @@ export default function BlobScanClient() {
         offset += chunk.length;
       }
 
-      // Try decryption: fetch key from on-chain blob, URL key, or ask user
+      // Try decryption only when share link provides a key or keyBlob
       let key = decryptKey; // from share link URL ?key= param
 
       // If ONE-DL: fetch key from on-chain key blob
@@ -317,8 +320,9 @@ export default function BlobScanClient() {
         }
       }
 
-      if (!key && !keyBlobName) {
-        // No key blob, no URL key — ask user manually
+      // Only ask for key manually if this is a share link that requires it
+      // (don't prompt for regular explorer downloads — file may not be encrypted)
+      if (!key && keyBlobName) {
         key = await askForDecryptKey(blobNameSuffix);
       }
 
@@ -352,6 +356,32 @@ export default function BlobScanClient() {
     }
   }
 
+  async function loadThumbnail(blobNameSuffix: string) {
+    if (!searchAddr || thumbnails[blobNameSuffix] || loadingThumbs.has(blobNameSuffix)) return;
+    setLoadingThumbs(prev => new Set(prev).add(blobNameSuffix));
+    try {
+      const blob = await shelbyClient.download({ account: searchAddr, blobName: blobNameSuffix });
+      const reader = blob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.length;
+      }
+      const data = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.length; }
+      const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
+      const mimeTypes: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", jfif: "image/jpeg" };
+      const imageBlob = new Blob([data], { type: mimeTypes[ext] || "image/png" });
+      const url = URL.createObjectURL(imageBlob);
+      setThumbnails(prev => ({ ...prev, [blobNameSuffix]: url }));
+    } catch {}
+    setLoadingThumbs(prev => { const s = new Set(prev); s.delete(blobNameSuffix); return s; });
+  }
+
   async function handlePreviewBlob(blobNameSuffix: string) {
     if (!searchAddr) return;
     try {
@@ -377,13 +407,17 @@ export default function BlobScanClient() {
       }
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
+      const videoExts = ["mp4", "webm", "ogg", "mov"];
       const mimeTypes: Record<string, string> = {
         jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
         gif: "image/gif", webp: "image/webp", jfif: "image/jpeg",
+        mp4: "video/mp4", webm: "video/webm", ogg: "video/ogg", mov: "video/quicktime",
       };
+      const isVideo = videoExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
-      const imageBlob = new Blob([data], { type: mime });
-      const url = URL.createObjectURL(imageBlob);
+      const mediaBlob = new Blob([data], { type: mime });
+      const url = URL.createObjectURL(mediaBlob);
+      setModalType(isVideo ? "video" : "image");
       setModalSrc(url);
     } catch (err: any) {
       alert(`Preview failed: ${err?.message || "Unknown error"}`);
@@ -397,7 +431,11 @@ export default function BlobScanClient() {
       <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, opacity: 0.08, pointerEvents: "none" }} />
       {modalSrc && (
         <div onClick={() => { URL.revokeObjectURL(modalSrc); setModalSrc(""); }} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
-          <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} />
+          {modalType === "video" ? (
+            <video src={modalSrc} controls autoPlay style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} onClick={e => e.stopPropagation()} />
+          ) : (
+            <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} />
+          )}
         </div>
       )}
       {/* Decrypt key prompt modal */}
@@ -508,14 +546,25 @@ export default function BlobScanClient() {
               <div style={{ fontSize: "13px", color: "#444" }}>No blobs found for this address.</div>
             ) : accountBlobs.map((blob, i) => {
               const isImage = blob.blobNameSuffix.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
+              const isVideo = blob.blobNameSuffix.match(/\.(mp4|webm|ogg|mov)$/i);
               const isExpired = blob.expirationMicros < Date.now() * 1000;
               const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${searchAddr}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`;
               const isHighlighted = highlightBlob === blob.blobNameSuffix;
+              if (isImage && !isExpired && !thumbnails[blob.blobNameSuffix]) {
+                loadThumbnail(blob.blobNameSuffix);
+              }
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #2a2a2a", padding: "10px 0", ...(isHighlighted ? { background: "#0a1a0a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "10px", marginBottom: "4px" } : {}) }}>
                   {isImage ? (
                     <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
-                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "zoom-in", color: "#7dd3a8" }}>🖼</div>
+                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "zoom-in", color: "#7dd3a8", overflow: "hidden", flexShrink: 0 }}>
+                      {thumbnails[blob.blobNameSuffix]
+                        ? <img src={thumbnails[blob.blobNameSuffix]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : loadingThumbs.has(blob.blobNameSuffix) ? <span style={{ fontSize: "10px", color: "#555" }}>...</span> : "🖼"}
+                    </div>
+                  ) : isVideo ? (
+                    <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
+                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", cursor: "pointer" }}>▶️</div>
                   ) : (
                     <div style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>
                   )}
