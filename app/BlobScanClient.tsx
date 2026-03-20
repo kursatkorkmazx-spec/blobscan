@@ -387,12 +387,16 @@ export default function BlobScanClient() {
     if (!searchAddr || previewLoading) return;
     setPreviewLoading(blobNameSuffix);
     try {
-      const shelbyBlob = await shelbyClient.download({
-        account: searchAddr,
-        blobName: blobNameSuffix,
-      });
-
-      const arrayBuffer = await new Response(shelbyBlob.readable).arrayBuffer();
+      // Bypass SDK stream wrapper — fetch directly to avoid ReadableStream issues in some browsers
+      const baseUrl: string = (shelbyClient as any).rpc?.baseUrl ?? "https://api.shelbynet.shelby.xyz/shelby";
+      const blobPath = blobNameSuffix.split("/").map(encodeURIComponent).join("/");
+      const fetchUrl = `${baseUrl}/v1/blobs/${searchAddr}/${blobPath}`;
+      const headers: Record<string, string> = {};
+      const apiKey = process.env.NEXT_PUBLIC_SHELBY_API_KEY;
+      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      const response = await fetch(fetchUrl, { headers });
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      const arrayBuffer = await response.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
@@ -409,7 +413,7 @@ export default function BlobScanClient() {
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
       if (data.byteLength === 0) {
-        alert(`Preview failed: received 0 bytes (content-length: ${shelbyBlob.contentLength}).`);
+        alert("Preview failed: server returned 0 bytes.");
         return;
       }
       const mediaBlob = new Blob([data], { type: mime });
