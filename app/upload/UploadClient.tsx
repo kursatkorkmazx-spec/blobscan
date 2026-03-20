@@ -27,7 +27,7 @@ function passwordStrength(pw: string): { label: string; color: string; pct: numb
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   if (score <= 1) return { label: "WEAK", color: "#f87171", pct: 20 };
   if (score <= 3) return { label: "MEDIUM", color: "#facc15", pct: 60 };
-  return { label: "STRONG", color: "#4ade80", pct: 100 };
+  return { label: "STRONG", color: "#39FF14", pct: 100 };
 }
 
 async function sha256(data: ArrayBuffer): Promise<string> {
@@ -186,7 +186,7 @@ export default function UploadClient() {
   const [qrModal, setQrModal] = useState<{ url: string; dataUrl: string } | null>(null);
 
   async function showQR(url: string) {
-    const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#4ade80", light: "#0f0f0f" } });
+    const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#39FF14", light: "#0f0f0f" } });
     setQrModal({ url, dataUrl });
   }
 
@@ -572,20 +572,20 @@ export default function UploadClient() {
   const filteredVault = vault.filter(r => vaultFilter === "ALL" || r.status === vaultFilter);
   const stats = { total: vault.length, active: vault.filter(r => r.status === "ACTIVE").length, expired: vault.filter(r => r.status === "EXPIRED").length, consumed: vault.filter(r => r.status === "CONSUMED").length };
 
-  const btn = { background: "#4ade80", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "9px 20px", fontSize: "13px", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" } as const;
-  const card = { background: "#1a1a1a", border: "1px solid #242424", borderRadius: "12px", padding: "20px", marginBottom: "14px" } as const;
-  const tab = (active: boolean) => ({ background: "transparent", border: "none", borderBottom: active ? "2px solid #4ade80" : "2px solid transparent", color: active ? "#4ade80" : "#555", fontSize: "13px", cursor: "pointer", padding: "8px 16px", marginRight: "4px", fontFamily: "inherit" } as const);
+  const btn = { background: "#39FF14", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "9px 20px", fontSize: "13px", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" } as const;
+  const card = { background: "#161616", border: "1px solid #222", borderRadius: "12px", padding: "20px", marginBottom: "14px" } as const;
+  const tab = (active: boolean) => ({ background: "transparent", border: "none", borderBottom: active ? "2px solid #39FF14" : "2px solid transparent", color: active ? "#39FF14" : "#666", fontSize: "13px", cursor: "pointer", padding: "8px 16px", marginRight: "4px", fontFamily: "inherit" } as const);
 
   return (
-    <main style={{ display: "flex", background: "#111", minHeight: "100vh" }}>
+    <main style={{ display: "flex", background: "#0d0d0d", minHeight: "100vh" }}>
       {/* Sidebar */}
-      <aside style={{ width: "190px", minHeight: "100vh", background: "#161616", borderRight: "1px solid #242424", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
+      <aside style={{ width: "190px", minHeight: "100vh", background: "#111", borderRight: "1px solid #1f1f1f", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
         <div style={{ padding: "16px 14px 14px", borderBottom: "1px solid #1f1f1f" }}>
           <a href="/" style={{ textDecoration: "none" }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#39FF14", textShadow: "0 0 8px rgba(57,255,20,0.6)", letterSpacing: "1px" }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "14px", color: "#39FF14", textShadow: "0 0 8px rgba(57,255,20,0.6)", letterSpacing: "1px" }}>
               BLOBSCAN
             </div>
-            <div style={{ fontSize: "9px", color: "#333", marginTop: "6px" }}>Shelby Network</div>
+            <div style={{ fontSize: "10px", color: "#666", marginTop: "8px" }}>Shelby Network</div>
           </a>
         </div>
         <nav style={{ padding: "10px 0", flex: 1 }}>
@@ -594,30 +594,54 @@ export default function UploadClient() {
             { label: "Explorer ↗", href: "https://explorer.shelby.xyz/shelbynet", icon: "M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3", active: false },
           ].map(item => (
             <a key={item.label} href={item.href} target={item.label.includes("↗") ? "_blank" : undefined} style={{ textDecoration: "none" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", fontSize: "14px", color: item.active ? "#4ade80" : "#888", background: item.active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: item.active ? 600 : 400 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", fontSize: "14px", color: item.active ? "#39FF14" : "#aaa", background: item.active ? "rgba(57,255,20,0.1)" : "transparent", fontWeight: item.active ? 600 : 400 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon} /></svg>
                 {item.label}
               </div>
             </a>
           ))}
         </nav>
-        <div style={{ borderTop: "1px solid #1f1f1f", padding: "14px 16px", fontSize: "10px", color: "#333" }}>
-          by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#3a3a3a", textDecoration: "none" }}>@solscammer</a>
+        <div style={{ borderTop: "1px solid #1f1f1f", padding: "14px 16px", fontSize: "10px", color: "#666" }}>
+          by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#666", textDecoration: "none" }}>@solscammer</a>
         </div>
       </aside>
 
+      {/* Wallet — fixed top-right (same as home page) */}
+      <div style={{ position: "fixed", top: "12px", right: "24px", zIndex: 100, display: "flex", alignItems: "center", gap: "8px" }}>
+        {connected ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#161616", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#39FF14", display: "inline-block" }} />
+              <span style={{ color: "#aaa" }}>{displayAddress?.slice(0, 6)}…{displayAddress?.slice(-4)}</span>
+            </div>
+            <button onClick={() => { disconnect(); addEvent("WALLET_DISCONNECTED", "Wallet disconnected"); }}
+              style={{ background: "transparent", border: "1px solid #333", borderRadius: "8px", padding: "5px 10px", color: "#aaa", fontSize: "12px", cursor: "pointer", fontFamily: "inherit" }}>Disconnect</button>
+          </>
+        ) : (
+          <>
+            {wallets.filter(w => w.name === "Petra").map(w => (
+              <button key={w.name} onClick={() => { connect(w.name); addEvent("WALLET_CONNECTED", `${w.name} connected`); }}
+                style={{ background: "#39FF14", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "5px 14px", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Connect Petra</button>
+            ))}
+            {wallets.filter(w => w.name === "Petra").length === 0 && (
+              <a href="https://petra.app" target="_blank" style={{ background: "transparent", border: "1px solid #333", borderRadius: "8px", padding: "5px 12px", color: "#aaa", fontSize: "12px", textDecoration: "none" }}>Install Petra</a>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Main */}
-      <div style={{ marginLeft: "190px", flex: 1, minHeight: "100vh", paddingBottom: "32px" }}>
+      <div style={{ marginLeft: "190px", flex: 1, minHeight: "100vh", paddingBottom: "32px", width: "calc(100% - 190px)" }}>
       <div className="upload-root" style={{ maxWidth: "800px", margin: "0 auto", color: "#e5e5e5", padding: "28px 24px" }}>
 
       {qrModal && (
         <div onClick={() => setQrModal(null)} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.88)", zIndex: 1000, alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "10px", padding: "24px", maxWidth: "340px", width: "90%", textAlign: "center" as const }}>
-            <div style={{ fontSize: "13px", color: "#4ade80", marginBottom: "12px", fontWeight: "bold" }}>QR Kod — Share Link</div>
+            <div style={{ fontSize: "13px", color: "#39FF14", marginBottom: "12px", fontWeight: "bold" }}>QR Kod — Share Link</div>
             <img src={qrModal.dataUrl} style={{ width: "280px", height: "280px", borderRadius: "8px", border: "1px solid #2a2a2a" }} alt="QR Code" />
             <div style={{ fontSize: "10px", color: "#444", marginTop: "10px", wordBreak: "break-all", maxHeight: "40px", overflow: "hidden" }}>{qrModal.url}</div>
             <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "center" }}>
-              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "6px 14px", color: "#4ade80",  fontSize: "11px", cursor: "pointer" }}>Copy Link</button>
+              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid rgba(57,255,20,0.4)", borderRadius: "4px", padding: "6px 14px", color: "#39FF14",  fontSize: "11px", cursor: "pointer" }}>Copy Link</button>
               <button onClick={() => {
                 const a = document.createElement("a");
                 a.href = qrModal.dataUrl;
@@ -630,22 +654,10 @@ export default function UploadClient() {
         </div>
       )}
 
-      {/* Top row: title + wallet */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "clamp(13px, 2vw, 18px)", color: "#39FF14", textShadow: "0 0 10px rgba(57,255,20,0.5)", marginBottom: "10px", letterSpacing: "1px" }}>UPLOAD</h1>
-          <p style={{ color: "#555", fontSize: "12px" }}>Shelby Network · AES-256-GCM · SHA-256 integrity</p>
-        </div>
-        {connected && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-              <span style={{ color: "#666" }}>{displayAddress?.slice(0, 6)}…{displayAddress?.slice(-4)}</span>
-            </div>
-            <button onClick={() => { disconnect(); addEvent("WALLET_DISCONNECTED", "Wallet disconnected"); }}
-              style={{ background: "transparent", border: "1px solid #242424", borderRadius: "8px", padding: "5px 10px", color: "#555", fontSize: "11px", cursor: "pointer", fontFamily: "inherit" }}>Disconnect</button>
-          </div>
-        )}
+      {/* Centered title */}
+      <div style={{ textAlign: "center", marginBottom: "28px", paddingTop: "8px" }}>
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "clamp(18px, 3vw, 28px)", color: "#39FF14", textShadow: "0 0 10px rgba(57,255,20,0.5)", marginBottom: "10px", letterSpacing: "1px" }}>UPLOAD</h1>
+        <p style={{ color: "#777", fontSize: "12px", margin: 0 }}>Shelby Network · AES-256-GCM · SHA-256 integrity</p>
       </div>
 
       {!connected ? (
@@ -656,7 +668,7 @@ export default function UploadClient() {
               <button key={w.name} onClick={() => { connect(w.name); addEvent("WALLET_CONNECTED", `${w.name} connected`); }} style={btn}>Connect Petra</button>
             ))}
             {wallets.filter(w => w.name === "Petra").length === 0 && (
-              <p style={{ color: "#555", fontSize: "12px" }}>No wallets detected. Install <a href="https://petra.app" target="_blank" style={{ color: "#4ade80" }}>Petra</a>.</p>
+              <p style={{ color: "#555", fontSize: "12px" }}>No wallets detected. Install <a href="https://petra.app" target="_blank" style={{ color: "#39FF14" }}>Petra</a>.</p>
             )}
           </div>
         </div>
@@ -671,7 +683,7 @@ export default function UploadClient() {
           {activeTab === "upload" && (
             <div>
               <div style={card}>
-                <div style={{ border: dragging ? "1px dashed #4ade80" : "1px dashed #2a2a2a", borderRadius: "6px", padding: fileInfos.length > 0 ? "16px" : "40px", textAlign: "center" as const, cursor: "pointer", color: "#555", marginBottom: "16px" }}
+                <div style={{ border: dragging ? "1px dashed #39FF14" : "1px dashed #2a2a2a", borderRadius: "6px", padding: fileInfos.length > 0 ? "16px" : "40px", textAlign: "center" as const, cursor: "pointer", color: "#555", marginBottom: "16px" }}
                   onDrop={handleDrop} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
                   onClick={() => document.getElementById("fi")?.click()}>
                   {fileInfos.length > 0 ? (
@@ -763,14 +775,14 @@ export default function UploadClient() {
                   </button>
                 </div>
 
-                {status && <div style={{ fontSize: "12px", color: status.startsWith("Error") ? "#f87171" : "#4ade80", marginBottom: "8px" }}>{status}</div>}
+                {status && <div style={{ fontSize: "12px", color: status.startsWith("Error") ? "#f87171" : "#39FF14", marginBottom: "8px" }}>{status}</div>}
 
                 {txHash && (
                   <div style={{ background: "#0a0a1a", border: "1px solid #1a1a3a", borderRadius: "6px", padding: "12px", marginBottom: "8px" }}>
                     <div style={{ fontSize: "11px", color: "#e5e5e5", marginBottom: "6px" }}>Transaction Hash:</div>
                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <code style={{ flex: 1, fontSize: "10px", color: "#888", wordBreak: "break-all" }}>{txHash}</code>
-                      <button onClick={() => copyToClipboard(txHash)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#4ade80", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>Copy</button>
+                      <button onClick={() => copyToClipboard(txHash)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#39FF14", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>Copy</button>
                       <a href={`https://explorer.aptoslabs.com/txn/${txHash}?network=shelbynet`} target="_blank" style={{ color: "#e5e5e5", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a4a", borderRadius: "4px", whiteSpace: "nowrap" }}>View TX</a>
                     </div>
                   </div>
@@ -779,13 +791,13 @@ export default function UploadClient() {
                 {shareLink && (
                   <div style={{ background: "#0a1a0a", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "12px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                      <div style={{ fontSize: "11px", color: "#4ade80" }}>Share Link (blob stored on Shelby network):</div>
+                      <div style={{ fontSize: "11px", color: "#39FF14" }}>Share Link (blob stored on Shelby network):</div>
                       <button onClick={() => setShareLink("")} style={{ background: "transparent", border: "none", color: "#555", cursor: "pointer", fontSize: "14px", lineHeight: 1, padding: "0 2px" }}>×</button>
                     </div>
                     <div style={{ display: "flex", gap: "8px" }}>
                       <input readOnly value={shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#888",  fontSize: "10px" }} />
-                      <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#4ade80", cursor: "pointer", fontSize: "11px" }}>Copy</button>
-                      <button onClick={() => showQR(shareLink)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "4px 8px", color: "#4ade80", cursor: "pointer", fontSize: "11px" }}>QR</button>
+                      <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#39FF14", cursor: "pointer", fontSize: "11px" }}>Copy</button>
+                      <button onClick={() => showQR(shareLink)} style={{ background: "transparent", border: "1px solid rgba(57,255,20,0.4)", borderRadius: "4px", padding: "4px 8px", color: "#39FF14", cursor: "pointer", fontSize: "11px" }}>QR</button>
                     </div>
                   </div>
                 )}
@@ -801,11 +813,11 @@ export default function UploadClient() {
                         <span style={{ color: "#e5e5e5" }}>{blob.blobNameSuffix}</span>
                         <div style={{ color: "#555", fontSize: "11px" }}>
                           {formatSize(blob.size)} · Expires: {new Date(blob.expirationMicros / 1000).toLocaleString()}
-                          {blob.isWritten && <span style={{ color: "#4ade80", marginLeft: "6px" }}>● Written</span>}
+                          {blob.isWritten && <span style={{ color: "#39FF14", marginLeft: "6px" }}>● Written</span>}
                         </div>
                       </div>
                       <a href={`https://explorer.shelby.xyz/shelbynet/account/${displayAddress}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`}
-                        target="_blank" style={{ color: "#4ade80", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px" }}>Explorer</a>
+                        target="_blank" style={{ color: "#39FF14", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid rgba(57,255,20,0.4)", borderRadius: "4px" }}>Explorer</a>
                     </div>
                   ))}
                 </div>
@@ -816,7 +828,7 @@ export default function UploadClient() {
           {activeTab === "vault" && (
             <div>
               <div className="vault-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", marginBottom: "16px" }}>
-                {[["TOTAL", stats.total, "#a0c4ff"], ["ACTIVE", stats.active, "#4ade80"], ["EXPIRED", stats.expired, "#facc15"], ["CONSUMED", stats.consumed, "#f87171"]].map(([label, count, color]) => (
+                {[["TOTAL", stats.total, "#a0c4ff"], ["ACTIVE", stats.active, "#39FF14"], ["EXPIRED", stats.expired, "#facc15"], ["CONSUMED", stats.consumed, "#f87171"]].map(([label, count, color]) => (
                   <div key={label as string} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "12px", textAlign: "center" as const }}>
                     <div style={{ fontSize: "18px", color: color as string, fontWeight: "bold" }}>{count}</div>
                     <div style={{ fontSize: "10px", color: "#555" }}>{label}</div>
@@ -827,7 +839,7 @@ export default function UploadClient() {
               <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
                 {(["ALL", "ACTIVE", "EXPIRED", "CONSUMED"] as const).map(f => (
                   <button key={f} onClick={() => setVaultFilter(f)}
-                    style={{ background: vaultFilter === f ? "#4ade80" : "transparent", color: vaultFilter === f ? "#0f0f0f" : "#555", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 10px",  fontSize: "11px", cursor: "pointer" }}>{f}</button>
+                    style={{ background: vaultFilter === f ? "#39FF14" : "transparent", color: vaultFilter === f ? "#0f0f0f" : "#555", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 10px",  fontSize: "11px", cursor: "pointer" }}>{f}</button>
                 ))}
                 <button onClick={panicWipe} style={{ marginLeft: "auto", background: "transparent", border: "1px solid #f87171", borderRadius: "4px", padding: "4px 10px", color: "#f87171",  fontSize: "11px", cursor: "pointer" }}>⚠ PANIC WIPE</button>
               </div>
@@ -838,7 +850,7 @@ export default function UploadClient() {
                 <div key={r.id} style={{ ...card, marginBottom: "8px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
                     <span style={{ color: "#e5e5e5", fontSize: "13px" }}>{r.name}</span>
-                    <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "3px", background: r.status === "ACTIVE" ? "#1a3a2a" : r.status === "EXPIRED" ? "#3a3010" : "#3a1010", color: r.status === "ACTIVE" ? "#4ade80" : r.status === "EXPIRED" ? "#facc15" : "#f87171" }}>{r.status}</span>
+                    <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "3px", background: r.status === "ACTIVE" ? "#1a3a2a" : r.status === "EXPIRED" ? "#3a3010" : "#3a1010", color: r.status === "ACTIVE" ? "#39FF14" : r.status === "EXPIRED" ? "#facc15" : "#f87171" }}>{r.status}</span>
                   </div>
                   <div style={{ fontSize: "11px", color: "#555", marginBottom: "4px" }}>
                     {formatSize(r.size)} · {r.date} · Expires: {r.expiration}
@@ -851,12 +863,12 @@ export default function UploadClient() {
                     {r.shareLink && (
                       <>
                         <input readOnly value={r.shareLink} style={{ flex: 1, minWidth: "120px", background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555",  fontSize: "10px" }} />
-                        <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#4ade80", cursor: "pointer", fontSize: "10px" }}>Copy</button>
-                        <button onClick={() => showQR(r.shareLink!)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "3px 6px", color: "#4ade80", cursor: "pointer", fontSize: "10px" }}>QR</button>
+                        <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#39FF14", cursor: "pointer", fontSize: "10px" }}>Copy</button>
+                        <button onClick={() => showQR(r.shareLink!)} style={{ background: "transparent", border: "1px solid rgba(57,255,20,0.4)", borderRadius: "4px", padding: "3px 6px", color: "#39FF14", cursor: "pointer", fontSize: "10px" }}>QR</button>
                       </>
                     )}
                     {r.status === "ACTIVE" && r.blobName && r.owner && (
-                      <button onClick={() => handleDownloadBlob(r)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "3px 8px", color: "#4ade80", cursor: "pointer", fontSize: "10px" }}>Download</button>
+                      <button onClick={() => handleDownloadBlob(r)} style={{ background: "transparent", border: "1px solid rgba(57,255,20,0.4)", borderRadius: "4px", padding: "3px 8px", color: "#39FF14", cursor: "pointer", fontSize: "10px" }}>Download</button>
                     )}
                   </div>
                 </div>
@@ -875,7 +887,7 @@ export default function UploadClient() {
               ) : events.map((e, i) => (
                 <div key={i} style={{ borderBottom: "1px solid #2a2a2a", padding: "6px 0", fontSize: "12px", display: "flex", gap: "10px" }}>
                   <span style={{ color: "#333", minWidth: "60px" }}>{e.time}</span>
-                  <span style={{ color: e.type.includes("FAILED") || e.type === "VAULT_WIPED" ? "#f87171" : e.type.includes("COMPLETED") || e.type.includes("DOWNLOADED") ? "#4ade80" : "#4ade80", minWidth: "140px" }}>{e.type}</span>
+                  <span style={{ color: e.type.includes("FAILED") || e.type === "VAULT_WIPED" ? "#f87171" : e.type.includes("COMPLETED") || e.type.includes("DOWNLOADED") ? "#39FF14" : "#39FF14", minWidth: "140px" }}>{e.type}</span>
                   <span style={{ color: "#555" }}>{e.message}</span>
                 </div>
               ))}

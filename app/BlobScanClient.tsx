@@ -550,7 +550,7 @@ export default function BlobScanClient() {
 
         {/* Top bar with search — only when showing results */}
         {shown && (
-          <header style={S.topbar}>
+          <header style={{ ...S.topbar, justifyContent: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "0 12px", height: "32px", width: "320px" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
