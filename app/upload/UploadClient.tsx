@@ -413,48 +413,13 @@ export default function UploadClient() {
       // Step 3: Upload blob data to RPC (file blobs + key blobs)
       setStatus("Uploading blob data to storage providers...");
       for (const blob of allBlobs) {
-        const uploadSize = blob.blobData.byteLength;
-        console.log(`[upload] putBlob: name="${blob.blobName}" size=${uploadSize} buffer=${blob.blobData.buffer.byteLength}`);
-        if (uploadSize === 0) {
-          console.error(`[upload] ABORT: blobData is 0 bytes! ArrayBuffer detached.`);
-          addEvent("UPLOAD_FAILED", `${blob.blobName} has 0 bytes — ArrayBuffer detached!`);
-          continue;
-        }
-        addEvent("BLOB_UPLOADED", `Uploading ${blob.blobName} (${uploadSize} bytes) to RPC...`);
+        addEvent("BLOB_UPLOADED", `Uploading ${blob.blobName} to RPC...`);
         await shelbyClient.rpc.putBlob({
           account: accountAddress,
           blobName: blob.blobName,
           blobData: blob.blobData,
         });
-        addEvent("BLOB_UPLOADED", `${blob.blobName} sent to RPC`);
-
-        // Verify: wait 3s then try to download and check size
-        await new Promise(r => setTimeout(r, 3000));
-        // Also log direct fetch for debugging
-        const directUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${accountAddress.toString()}/${encodeURIComponent(blob.blobName)}`;
-        try {
-          const directResp = await fetch(directUrl);
-          console.log(`[upload] DIRECT GET ${directUrl} → status=${directResp.status} content-length=${directResp.headers.get("content-length")} content-type=${directResp.headers.get("content-type")}`);
-        } catch(de) { console.error("[upload] DIRECT GET error:", de); }
-        try {
-          const verify = await shelbyClient.download({ account: accountAddress, blobName: blob.blobName });
-          const vReader = verify.readable.getReader();
-          let vBytes = 0;
-          while (true) {
-            const { done, value } = await vReader.read();
-            if (done) break;
-            vBytes += value.byteLength;
-          }
-          console.log(`[upload] VERIFY: downloaded ${vBytes} bytes for "${blob.blobName}" (uploaded ${uploadSize})`);
-          if (vBytes === 0) {
-            addEvent("UPLOAD_FAILED", `VERIFY FAILED: ${blob.blobName} — uploaded ${uploadSize} but downloaded 0 bytes!`);
-          } else {
-            addEvent("BLOB_UPLOADED", `VERIFIED: ${blob.blobName} — ${vBytes} bytes readable`);
-          }
-        } catch (vErr: any) {
-          console.error(`[upload] VERIFY ERROR:`, vErr);
-          addEvent("UPLOAD_FAILED", `VERIFY ERROR: ${vErr?.message}`);
-        }
+        addEvent("BLOB_UPLOADED", `${blob.blobName} uploaded to storage providers`);
       }
 
       // Create vault records
