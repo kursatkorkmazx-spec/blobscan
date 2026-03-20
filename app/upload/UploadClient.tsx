@@ -666,12 +666,34 @@ export default function UploadClient() {
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px 0", borderBottom: i < fileInfos.length - 1 ? "1px solid #2a2a2a" : "none" }}>
                           {fi.preview ? <img src={fi.preview} style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "4px", border: "1px solid #2a2a2a" }} /> : <div style={{ width: "48px", height: "48px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <input
-                              value={customNames[i] ?? fi.file.name}
-                              onChange={e => setCustomNames(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
-                              onClick={e => e.stopPropagation()}
-                              style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a2a2a", color: "#a0c4ff", fontSize: "13px", fontFamily: "monospace", width: "100%", outline: "none", padding: "2px 0", marginBottom: "2px" }}
-                            />
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "2px" }}>
+                              <input
+                                value={customNames[i] ?? fi.file.name}
+                                onChange={e => {
+                                  const newVal = e.target.value;
+                                  const origName = fi.file.name;
+                                  const dotIdx = origName.lastIndexOf(".");
+                                  const ext = dotIdx !== -1 ? origName.slice(dotIdx) : "";
+                                  if (ext && !newVal.endsWith(ext)) return;
+                                  setCustomNames(prev => { const n = [...prev]; n[i] = newVal; return n; });
+                                }}
+                                onKeyDown={e => {
+                                  const origName = fi.file.name;
+                                  const dotIdx = origName.lastIndexOf(".");
+                                  const ext = dotIdx !== -1 ? origName.slice(dotIdx) : "";
+                                  if (!ext) return;
+                                  const cur = customNames[i] ?? origName;
+                                  const baseName = cur.slice(0, cur.length - ext.length);
+                                  if ((e.key === "Backspace" || e.key === "Delete") && baseName.length === 0) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                onClick={e => e.stopPropagation()}
+                                title="Click to rename"
+                                style={{ background: "transparent", border: "none", borderBottom: "1px dashed #3a3a5a", color: "#a0c4ff", fontSize: "13px", fontFamily: "monospace", width: "100%", outline: "none", padding: "2px 0", cursor: "text" }}
+                              />
+                              <span style={{ color: "#444", fontSize: "10px", whiteSpace: "nowrap", flexShrink: 0 }}>✏️ rename</span>
+                            </div>
                             {customNames[i] && customNames[i] !== fi.file.name && (
                               <div style={{ color: "#555", fontSize: "10px" }}>original: {fi.file.name}</div>
                             )}
