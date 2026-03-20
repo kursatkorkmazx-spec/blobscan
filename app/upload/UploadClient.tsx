@@ -186,7 +186,7 @@ export default function UploadClient() {
   const [qrModal, setQrModal] = useState<{ url: string; dataUrl: string } | null>(null);
 
   async function showQR(url: string) {
-    const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#7dd3a8", light: "#0f0f0f" } });
+    const dataUrl = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#4ade80", light: "#0f0f0f" } });
     setQrModal({ url, dataUrl });
   }
 
@@ -572,48 +572,58 @@ export default function UploadClient() {
   const filteredVault = vault.filter(r => vaultFilter === "ALL" || r.status === vaultFilter);
   const stats = { total: vault.length, active: vault.filter(r => r.status === "ACTIVE").length, expired: vault.filter(r => r.status === "EXPIRED").length, consumed: vault.filter(r => r.status === "CONSUMED").length };
 
-  const btn = { background: "#7dd3a8", color: "#0f0f0f", border: "none", borderRadius: "6px", padding: "10px 20px", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", fontWeight: "bold" } as const;
-  const card = { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "20px", marginBottom: "16px" } as const;
-  const tab = (active: boolean) => ({ background: "transparent", border: "none", borderBottom: active ? "2px solid #7dd3a8" : "2px solid transparent", color: active ? "#7dd3a8" : "#555", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", padding: "8px 16px", marginRight: "4px" } as const);
+  const btn = { background: "#4ade80", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "9px 20px", fontSize: "13px", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" } as const;
+  const card = { background: "#1a1a1a", border: "1px solid #242424", borderRadius: "12px", padding: "20px", marginBottom: "14px" } as const;
+  const tab = (active: boolean) => ({ background: "transparent", border: "none", borderBottom: active ? "2px solid #4ade80" : "2px solid transparent", color: active ? "#4ade80" : "#555", fontSize: "13px", cursor: "pointer", padding: "8px 16px", marginRight: "4px", fontFamily: "inherit" } as const);
 
   return (
-    <main className="upload-root" style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
-      <canvas id="matrix-upload" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, opacity: 0.08, pointerEvents: "none" }} ref={el => {
-        if (!el || (el as any)._init) return;
-        (el as any)._init = true;
-        const ctx = el.getContext("2d")!;
-        el.width = window.innerWidth; el.height = window.innerHeight;
-        const cols = Math.floor(el.width / 20);
-        const drops = Array(cols).fill(1);
-        const chars = "アイウエオカキクケコ0123456789ABCDEF";
-        setInterval(() => {
-          ctx.fillStyle = "rgba(0,0,0,0.05)";
-          ctx.fillRect(0, 0, el.width, el.height);
-          ctx.fillStyle = "#7dd3a8";
-          ctx.font = "14px monospace";
-          drops.forEach((y, i) => {
-            ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 20, y * 20);
-            if (y * 20 > el.height && Math.random() > 0.975) drops[i] = 0;
-            drops[i]++;
-          });
-        }, 50);
-      }} />
+    <main style={{ display: "flex", background: "#111", minHeight: "100vh" }}>
+      {/* Sidebar */}
+      <aside style={{ width: "190px", minHeight: "100vh", background: "#161616", borderRight: "1px solid #242424", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
+        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid #1f1f1f" }}>
+          <a href="/" style={{ textDecoration: "none" }}>
+            <div style={{ fontSize: "17px", fontWeight: 700, color: "#4ade80", letterSpacing: "-0.3px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "20px" }}>⬡</span> BlobScan
+            </div>
+            <div style={{ fontSize: "10px", color: "#444", marginTop: "2px", marginLeft: "28px" }}>Shelby Network</div>
+          </a>
+        </div>
+        <nav style={{ padding: "10px 0", flex: 1 }}>
+          {[{ label: "Home", href: "/", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
+            { label: "Explorer", href: "/", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
+            { label: "Upload", href: "/upload", icon: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12", active: true }
+          ].map(item => (
+            <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", fontSize: "14px", color: item.active ? "#4ade80" : "#888", background: item.active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: item.active ? 600 : 400 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon} /></svg>
+                {item.label}
+              </div>
+            </a>
+          ))}
+        </nav>
+        <div style={{ borderTop: "1px solid #1f1f1f", padding: "14px 16px", fontSize: "10px", color: "#333" }}>
+          by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#3a3a3a", textDecoration: "none" }}>@solscammer</a>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="upload-root" style={{ marginLeft: "190px", flex: 1, color: "#e5e5e5", padding: "28px", minHeight: "100vh" }}>
 
       {qrModal && (
         <div onClick={() => setQrModal(null)} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.88)", zIndex: 1000, alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "10px", padding: "24px", maxWidth: "340px", width: "90%", textAlign: "center" as const }}>
-            <div style={{ fontSize: "13px", color: "#7dd3a8", marginBottom: "12px", fontWeight: "bold" }}>QR Kod — Share Link</div>
+            <div style={{ fontSize: "13px", color: "#4ade80", marginBottom: "12px", fontWeight: "bold" }}>QR Kod — Share Link</div>
             <img src={qrModal.dataUrl} style={{ width: "280px", height: "280px", borderRadius: "8px", border: "1px solid #2a2a2a" }} alt="QR Code" />
             <div style={{ fontSize: "10px", color: "#444", marginTop: "10px", wordBreak: "break-all", maxHeight: "40px", overflow: "hidden" }}>{qrModal.url}</div>
             <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "center" }}>
-              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "6px 14px", color: "#7dd3a8", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Copy Link</button>
+              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "6px 14px", color: "#4ade80",  fontSize: "11px", cursor: "pointer" }}>Copy Link</button>
               <button onClick={() => {
                 const a = document.createElement("a");
                 a.href = qrModal.dataUrl;
                 a.download = "qr-code.png";
                 a.click();
-              }} style={{ background: "transparent", border: "1px solid #555", borderRadius: "4px", padding: "6px 14px", color: "#888", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Download PNG</button>
-              <button onClick={() => setQrModal(null)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Close</button>
+              }} style={{ background: "transparent", border: "1px solid #555", borderRadius: "4px", padding: "6px 14px", color: "#888",  fontSize: "11px", cursor: "pointer" }}>Download PNG</button>
+              <button onClick={() => setQrModal(null)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#555",  fontSize: "11px", cursor: "pointer" }}>Close</button>
             </div>
           </div>
         </div>
@@ -628,12 +638,12 @@ export default function UploadClient() {
               <span style={{ color: "#555", marginLeft: "6px" }}>{displayAddress?.slice(0, 8)}...{displayAddress?.slice(-6)}</span>
             </div>
             <button onClick={() => { disconnect(); addEvent("WALLET_DISCONNECTED", "Wallet disconnected"); }}
-              style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Disconnect</button>
+              style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 8px", color: "#555",  fontSize: "11px", cursor: "pointer" }}>Disconnect</button>
           </div>
         )}
       </div>
 
-      <h1 style={{ color: "#7dd3a8", marginTop: "8px", marginBottom: "4px" }}>Upload to Shelby</h1>
+      <h1 style={{ color: "#4ade80", marginTop: "8px", marginBottom: "4px" }}>Upload to Shelby</h1>
       <p style={{ color: "#666", fontSize: "13px", marginBottom: "24px" }}>Decentralized hot storage · AES-256-GCM encryption · SHA-256 integrity · Real blob uploads</p>
 
       {!connected ? (
@@ -644,7 +654,7 @@ export default function UploadClient() {
               <button key={w.name} onClick={() => { connect(w.name); addEvent("WALLET_CONNECTED", `${w.name} connected`); }} style={btn}>Connect Petra</button>
             ))}
             {wallets.filter(w => w.name === "Petra").length === 0 && (
-              <p style={{ color: "#555", fontSize: "12px" }}>No wallets detected. Install <a href="https://petra.app" target="_blank" style={{ color: "#7dd3a8" }}>Petra</a>.</p>
+              <p style={{ color: "#555", fontSize: "12px" }}>No wallets detected. Install <a href="https://petra.app" target="_blank" style={{ color: "#4ade80" }}>Petra</a>.</p>
             )}
           </div>
         </div>
@@ -659,7 +669,7 @@ export default function UploadClient() {
           {activeTab === "upload" && (
             <div>
               <div style={card}>
-                <div style={{ border: dragging ? "1px dashed #7dd3a8" : "1px dashed #2a2a2a", borderRadius: "6px", padding: fileInfos.length > 0 ? "16px" : "40px", textAlign: "center" as const, cursor: "pointer", color: "#555", marginBottom: "16px" }}
+                <div style={{ border: dragging ? "1px dashed #4ade80" : "1px dashed #2a2a2a", borderRadius: "6px", padding: fileInfos.length > 0 ? "16px" : "40px", textAlign: "center" as const, cursor: "pointer", color: "#555", marginBottom: "16px" }}
                   onDrop={handleDrop} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
                   onClick={() => document.getElementById("fi")?.click()}>
                   {fileInfos.length > 0 ? (
@@ -669,7 +679,7 @@ export default function UploadClient() {
                           {fi.preview ? <img src={fi.preview} style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "4px", border: "1px solid #2a2a2a" }} /> : <div style={{ width: "48px", height: "48px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ marginBottom: "2px" }}>
-                              <span style={{ color: "#a0c4ff", fontSize: "13px", fontFamily: "monospace" }}>{fi.file.name}</span>
+                              <span style={{ color: "#e5e5e5", fontSize: "13px", fontFamily: "inherit" }}>{fi.file.name}</span>
                             </div>
                             <div style={{ color: "#555", fontSize: "11px" }}>{fileType(fi.file.name)} · {formatSize(fi.file.size)}</div>
                             <div style={{ color: "#333", fontSize: "10px", marginTop: "2px" }}>SHA-256: {fi.hash.slice(0, 16)}...{fi.hash.slice(-8)}</div>
@@ -697,7 +707,7 @@ export default function UploadClient() {
                         <>
                           <div style={{ display: "flex", gap: "8px", marginBottom: "6px" }}>
                             <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Encryption password" type={showPassword ? "text" : "password"}
-                              style={{ flex: 1, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#e0e0e0", fontFamily: "monospace", fontSize: "12px" }} />
+                              style={{ flex: 1, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#e0e0e0",  fontSize: "12px" }} />
                             <button onClick={() => setShowPassword(!showPassword)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", cursor: "pointer", fontSize: "11px" }}>{showPassword ? "Hide" : "Show"}</button>
                             <button onClick={() => setPassword(generateKey())} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", cursor: "pointer", fontSize: "11px" }}>GEN</button>
                           </div>
@@ -728,7 +738,7 @@ export default function UploadClient() {
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span style={{ fontSize: "11px", color: "#888" }}>Key lifetime:</span>
                         <select value={keyLifetime} onChange={e => setKeyLifetime(e.target.value)}
-                          style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#f87171", fontFamily: "monospace", fontSize: "11px" }}>
+                          style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#f87171",  fontSize: "11px" }}>
                           <option value="300">5 minutes</option>
                           <option value="1800">30 minutes</option>
                           <option value="3600">1 hour</option>
@@ -740,7 +750,7 @@ export default function UploadClient() {
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-                  <select value={expiration} onChange={(e) => setExpiration(e.target.value)} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "8px", color: "#e0e0e0", fontFamily: "monospace" }}>
+                  <select value={expiration} onChange={(e) => setExpiration(e.target.value)} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "8px", color: "#e0e0e0", fontFamily: "inherit" }}>
                     <option value="3600">1 hour</option>
                     <option value="86400">1 day</option>
                     <option value="604800">7 days</option>
@@ -755,11 +765,11 @@ export default function UploadClient() {
 
                 {txHash && (
                   <div style={{ background: "#0a0a1a", border: "1px solid #1a1a3a", borderRadius: "6px", padding: "12px", marginBottom: "8px" }}>
-                    <div style={{ fontSize: "11px", color: "#a0c4ff", marginBottom: "6px" }}>Transaction Hash:</div>
+                    <div style={{ fontSize: "11px", color: "#e5e5e5", marginBottom: "6px" }}>Transaction Hash:</div>
                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <code style={{ flex: 1, fontSize: "10px", color: "#888", wordBreak: "break-all" }}>{txHash}</code>
-                      <button onClick={() => copyToClipboard(txHash)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>Copy</button>
-                      <a href={`https://explorer.aptoslabs.com/txn/${txHash}?network=shelbynet`} target="_blank" style={{ color: "#a0c4ff", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a4a", borderRadius: "4px", whiteSpace: "nowrap" }}>View TX</a>
+                      <button onClick={() => copyToClipboard(txHash)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#4ade80", cursor: "pointer", fontSize: "11px", whiteSpace: "nowrap" }}>Copy</button>
+                      <a href={`https://explorer.aptoslabs.com/txn/${txHash}?network=shelbynet`} target="_blank" style={{ color: "#e5e5e5", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a4a", borderRadius: "4px", whiteSpace: "nowrap" }}>View TX</a>
                     </div>
                   </div>
                 )}
@@ -771,9 +781,9 @@ export default function UploadClient() {
                       <button onClick={() => setShareLink("")} style={{ background: "transparent", border: "none", color: "#555", cursor: "pointer", fontSize: "14px", lineHeight: 1, padding: "0 2px" }}>×</button>
                     </div>
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <input readOnly value={shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#888", fontFamily: "monospace", fontSize: "10px" }} />
-                      <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px" }}>Copy</button>
-                      <button onClick={() => showQR(shareLink)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px" }}>QR</button>
+                      <input readOnly value={shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#888",  fontSize: "10px" }} />
+                      <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#4ade80", cursor: "pointer", fontSize: "11px" }}>Copy</button>
+                      <button onClick={() => showQR(shareLink)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "4px 8px", color: "#4ade80", cursor: "pointer", fontSize: "11px" }}>QR</button>
                     </div>
                   </div>
                 )}
@@ -786,14 +796,14 @@ export default function UploadClient() {
                   {accountBlobs.map((blob, i) => (
                     <div key={i} style={{ borderBottom: "1px solid #2a2a2a", padding: "8px 0", fontSize: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <span style={{ color: "#a0c4ff" }}>{blob.blobNameSuffix}</span>
+                        <span style={{ color: "#e5e5e5" }}>{blob.blobNameSuffix}</span>
                         <div style={{ color: "#555", fontSize: "11px" }}>
                           {formatSize(blob.size)} · Expires: {new Date(blob.expirationMicros / 1000).toLocaleString()}
                           {blob.isWritten && <span style={{ color: "#4ade80", marginLeft: "6px" }}>● Written</span>}
                         </div>
                       </div>
                       <a href={`https://explorer.shelby.xyz/shelbynet/account/${displayAddress}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`}
-                        target="_blank" style={{ color: "#7dd3a8", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px" }}>Explorer</a>
+                        target="_blank" style={{ color: "#4ade80", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px" }}>Explorer</a>
                     </div>
                   ))}
                 </div>
@@ -815,9 +825,9 @@ export default function UploadClient() {
               <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
                 {(["ALL", "ACTIVE", "EXPIRED", "CONSUMED"] as const).map(f => (
                   <button key={f} onClick={() => setVaultFilter(f)}
-                    style={{ background: vaultFilter === f ? "#7dd3a8" : "transparent", color: vaultFilter === f ? "#0f0f0f" : "#555", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 10px", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>{f}</button>
+                    style={{ background: vaultFilter === f ? "#4ade80" : "transparent", color: vaultFilter === f ? "#0f0f0f" : "#555", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 10px",  fontSize: "11px", cursor: "pointer" }}>{f}</button>
                 ))}
-                <button onClick={panicWipe} style={{ marginLeft: "auto", background: "transparent", border: "1px solid #f87171", borderRadius: "4px", padding: "4px 10px", color: "#f87171", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>⚠ PANIC WIPE</button>
+                <button onClick={panicWipe} style={{ marginLeft: "auto", background: "transparent", border: "1px solid #f87171", borderRadius: "4px", padding: "4px 10px", color: "#f87171",  fontSize: "11px", cursor: "pointer" }}>⚠ PANIC WIPE</button>
               </div>
 
               {filteredVault.length === 0 ? (
@@ -825,7 +835,7 @@ export default function UploadClient() {
               ) : filteredVault.map((r) => (
                 <div key={r.id} style={{ ...card, marginBottom: "8px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
-                    <span style={{ color: "#a0c4ff", fontSize: "13px" }}>{r.name}</span>
+                    <span style={{ color: "#e5e5e5", fontSize: "13px" }}>{r.name}</span>
                     <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "3px", background: r.status === "ACTIVE" ? "#1a3a2a" : r.status === "EXPIRED" ? "#3a3010" : "#3a1010", color: r.status === "ACTIVE" ? "#4ade80" : r.status === "EXPIRED" ? "#facc15" : "#f87171" }}>{r.status}</span>
                   </div>
                   <div style={{ fontSize: "11px", color: "#555", marginBottom: "4px" }}>
@@ -838,13 +848,13 @@ export default function UploadClient() {
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                     {r.shareLink && (
                       <>
-                        <input readOnly value={r.shareLink} style={{ flex: 1, minWidth: "120px", background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "10px" }} />
-                        <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Copy</button>
-                        <button onClick={() => showQR(r.shareLink!)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>QR</button>
+                        <input readOnly value={r.shareLink} style={{ flex: 1, minWidth: "120px", background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555",  fontSize: "10px" }} />
+                        <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#4ade80", cursor: "pointer", fontSize: "10px" }}>Copy</button>
+                        <button onClick={() => showQR(r.shareLink!)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "3px 6px", color: "#4ade80", cursor: "pointer", fontSize: "10px" }}>QR</button>
                       </>
                     )}
                     {r.status === "ACTIVE" && r.blobName && r.owner && (
-                      <button onClick={() => handleDownloadBlob(r)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "3px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Download</button>
+                      <button onClick={() => handleDownloadBlob(r)} style={{ background: "transparent", border: "1px solid rgba(74,222,128,0.4)", borderRadius: "4px", padding: "3px 8px", color: "#4ade80", cursor: "pointer", fontSize: "10px" }}>Download</button>
                     )}
                   </div>
                 </div>
@@ -856,14 +866,14 @@ export default function UploadClient() {
             <div style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                 <h2 style={{ margin: 0, fontSize: "13px", color: "#888", textTransform: "uppercase" as const, letterSpacing: "1px" }}>Protocol Events</h2>
-                <button onClick={() => { setEvents([]); localStorage.removeItem("shelby_events"); }} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 8px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Clear</button>
+                <button onClick={() => { setEvents([]); localStorage.removeItem("shelby_events"); }} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 8px", color: "#555",  fontSize: "11px", cursor: "pointer" }}>Clear</button>
               </div>
               {events.length === 0 ? (
                 <div style={{ color: "#444", fontSize: "13px" }}>No events yet.</div>
               ) : events.map((e, i) => (
                 <div key={i} style={{ borderBottom: "1px solid #2a2a2a", padding: "6px 0", fontSize: "12px", display: "flex", gap: "10px" }}>
                   <span style={{ color: "#333", minWidth: "60px" }}>{e.time}</span>
-                  <span style={{ color: e.type.includes("FAILED") || e.type === "VAULT_WIPED" ? "#f87171" : e.type.includes("COMPLETED") || e.type.includes("DOWNLOADED") ? "#4ade80" : "#7dd3a8", minWidth: "140px" }}>{e.type}</span>
+                  <span style={{ color: e.type.includes("FAILED") || e.type === "VAULT_WIPED" ? "#f87171" : e.type.includes("COMPLETED") || e.type.includes("DOWNLOADED") ? "#4ade80" : "#4ade80", minWidth: "140px" }}>{e.type}</span>
                   <span style={{ color: "#555" }}>{e.message}</span>
                 </div>
               ))}
@@ -871,13 +881,7 @@ export default function UploadClient() {
           )}
         </>
       )}
-      <style>{`
-        .upload-root { padding: 32px; }
-        @media (max-width: 600px) {
-          .upload-root { padding: 14px; }
-          .vault-stats { grid-template-columns: 1fr 1fr !important; }
-        }
-      `}</style>
+      </div>
     </main>
   );
 }

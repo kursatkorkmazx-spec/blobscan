@@ -461,314 +461,365 @@ export default function BlobScanClient() {
     }
   }
 
-  const card = { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "20px", marginBottom: "16px" } as const;
+
+  // ─── Styles ──────────────────────────────────────────────────────────────────
+  const S = {
+    sidebar: { width: "190px", minHeight: "100vh", background: "#161616", borderRight: "1px solid #242424", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 } as const,
+    main: { marginLeft: "190px", minHeight: "100vh", display: "flex", flexDirection: "column" } as const,
+    topbar: { background: "#111", borderBottom: "1px solid #242424", padding: "0 24px", height: "52px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 40 } as const,
+    content: { padding: "28px 28px 80px", flex: 1 } as const,
+    input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "8px 14px", color: "#e5e5e5", fontSize: "13px", outline: "none", fontFamily: "inherit" } as const,
+    btnGreen: { background: "#4ade80", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } as const,
+    btnOutline: { background: "transparent", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "6px 14px", color: "#888", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
+    btnGreenOutline: { background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "8px", padding: "6px 14px", color: "#4ade80", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
+    navItem: (active: boolean) => ({ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", cursor: "pointer", fontSize: "14px", color: active ? "#4ade80" : "#888", background: active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: active ? 600 : 400 } as const),
+    card: { background: "#1a1a1a", border: "1px solid #242424", borderRadius: "12px", padding: "20px", marginBottom: "12px" } as const,
+  };
+
+  const NavIcon = ({ d }: { d: string }) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+  );
 
   return (
-    <div className="blobscan-root" style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", paddingBottom: "120px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
-      <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, opacity: 0.08, pointerEvents: "none" }} />
-      {modalSrc && (
-        <div onClick={() => { URL.revokeObjectURL(modalSrc); setModalSrc(""); }} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
-          {modalType === "video" ? (
-            <video
-              src={modalSrc}
-              controls
-              playsInline
-              style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }}
-              onClick={e => e.stopPropagation()}
-              onError={e => {
-                const v = e.currentTarget as HTMLVideoElement;
-                const code = v.error?.code;
-                const msgs: Record<number, string> = {
-                  1: "Load aborted",
-                  2: "Network error",
-                  3: "Decode error (unsupported codec — try H.264)",
-                  4: "Format not supported by this browser",
-                };
-                const detail = v.error?.message || "";
-                alert(`Video playback failed (error ${code ?? "?"}): ${msgs[code ?? 0] ?? "Unknown error"}\n\nBrowser: ${detail}\n\nCheck browser console for blob URL and size info.`);
-              }}
-            />
-          ) : modalType === "audio" ? (
-            <audio
-              src={modalSrc}
-              controls
-              autoPlay
-              style={{ width: "320px", borderRadius: "8px" }}
-              onClick={e => e.stopPropagation()}
-              onError={e => {
-                const a = e.currentTarget as HTMLAudioElement;
-                const code = a.error?.code;
-                const msgs: Record<number, string> = {
-                  1: "Load aborted",
-                  2: "Network error",
-                  3: "Decode error (unsupported codec)",
-                  4: "Format not supported by this browser",
-                };
-                alert(`Audio playback failed (error ${code ?? "?"}): ${msgs[code ?? 0] ?? "Unknown error"}`);
-              }}
-            />
+    <div style={{ display: "flex", background: "#111", minHeight: "100vh" }}>
+
+      {/* ── Sidebar ── */}
+      <aside style={S.sidebar}>
+        {/* Logo */}
+        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid #1f1f1f" }}>
+          <div style={{ fontSize: "17px", fontWeight: 700, color: "#4ade80", letterSpacing: "-0.3px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "20px" }}>⬡</span> BlobScan
+          </div>
+          <div style={{ fontSize: "10px", color: "#444", marginTop: "2px", marginLeft: "28px" }}>Shelby Network</div>
+        </div>
+
+        {/* Nav */}
+        <nav style={{ padding: "10px 0", flex: 1 }}>
+          <a href="/" style={{ textDecoration: "none" }}>
+            <div style={S.navItem(!shown)}>
+              <NavIcon d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              Home
+            </div>
+          </a>
+          <div style={S.navItem(shown)}>
+            <NavIcon d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+            Explorer
+          </div>
+          <a href="/upload" style={{ textDecoration: "none" }}>
+            <div style={S.navItem(false)}>
+              <NavIcon d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+              Upload
+            </div>
+          </a>
+          <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ textDecoration: "none" }}>
+            <div style={S.navItem(false)}>
+              <NavIcon d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+              Explorer ↗
+            </div>
+          </a>
+        </nav>
+
+        {/* Network status */}
+        <div style={{ borderTop: "1px solid #1f1f1f", padding: "14px 16px" }}>
+          <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>Network</div>
+          {netStatus ? (
+            <div style={{ fontSize: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
+                <span style={{ color: "#4ade80", fontWeight: 600 }}>Online</span>
+              </div>
+              <div style={{ color: "#555", fontSize: "11px" }}>Block <span style={{ color: "#888" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></div>
+              <div style={{ color: "#555", fontSize: "11px" }}>TPS <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></div>
+            </div>
           ) : (
-            <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} />
+            <div style={{ fontSize: "11px", color: "#444" }}>Connecting…</div>
+          )}
+          <div style={{ marginTop: "12px", fontSize: "10px", color: "#333" }}>
+            by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#3a3a3a", textDecoration: "none" }}>@solscammer</a>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Main ── */}
+      <main style={S.main}>
+
+        {/* Top bar */}
+        <header style={S.topbar}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "0 14px", height: "34px" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
+              placeholder="Search wallet address (0x…)"
+              style={{ background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "13px", flex: 1, fontFamily: "inherit" }} />
+          </div>
+          {connected && walletAddress && (
+            <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 12px" }}>My Wallet</button>
+          )}
+          <button onClick={lookup} style={{ ...S.btnGreen, padding: "6px 16px", fontSize: "13px" }}>Search</button>
+
+          {/* Wallet */}
+          <div style={{ width: "1px", height: "20px", background: "#242424", margin: "0 4px" }} />
+          {connected ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", animation: "pulse-green 2s infinite" }} />
+                <span style={{ color: "#888" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
+              </div>
+              <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 12px", fontSize: "12px" }}>Disconnect</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: "8px" }}>
+              {wallets.filter(w => w.name === "Petra").map(w => (
+                <button key={w.name} onClick={() => connect(w.name)} style={{ ...S.btnGreen, padding: "6px 14px", fontSize: "12px" }}>Connect Petra</button>
+              ))}
+              {wallets.filter(w => w.name === "Petra").length === 0 && (
+                <a href="https://petra.app" target="_blank" style={{ ...S.btnOutline, textDecoration: "none", padding: "6px 14px", fontSize: "12px" }}>Install Petra</a>
+              )}
+            </div>
+          )}
+        </header>
+
+        {/* Content */}
+        <div style={S.content}>
+
+          {/* Modals */}
+          {modalSrc && (
+            <div onClick={() => { URL.revokeObjectURL(modalSrc); setModalSrc(""); }}
+              style={{ display: "flex", position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
+              {modalType === "video" ? (
+                <video src={modalSrc} controls playsInline style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "10px" }}
+                  onClick={e => e.stopPropagation()}
+                  onError={e => { const v = e.currentTarget as HTMLVideoElement; alert(`Video error ${v.error?.code}: ${v.error?.message}`); }} />
+              ) : modalType === "audio" ? (
+                <div onClick={e => e.stopPropagation()} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "14px", padding: "32px", textAlign: "center" }}>
+                  <div style={{ fontSize: "48px", marginBottom: "16px" }}>🎵</div>
+                  <audio src={modalSrc} controls autoPlay style={{ width: "280px" }}
+                    onError={e => { const a = e.currentTarget as HTMLAudioElement; alert(`Audio error ${a.error?.code}`); }} />
+                </div>
+              ) : (
+                <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "10px" }} />
+              )}
+            </div>
+          )}
+
+          {decryptPrompt && (
+            <div style={{ display: "flex", position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000, alignItems: "center", justifyContent: "center" }}>
+              <div style={{ ...S.card, maxWidth: "400px", width: "90%", padding: "28px" }}>
+                <div style={{ fontSize: "13px", color: "#4ade80", marginBottom: "4px", fontWeight: 600 }}>🔒 Encrypted Blob</div>
+                <div style={{ fontSize: "12px", color: "#666", marginBottom: "14px" }}><span style={{ color: "#888" }}>{decryptPrompt.blobName}</span> may be encrypted.</div>
+                <input value={decryptInput} onChange={e => setDecryptInput(e.target.value)} placeholder="Enter decryption key…"
+                  onKeyDown={e => { if (e.key === "Enter" && decryptInput) { decryptPrompt.resolve(decryptInput); setDecryptPrompt(null); } }}
+                  style={{ ...S.input, width: "100%", marginBottom: "14px" }} />
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  <button onClick={() => { decryptPrompt.resolve(null); setDecryptPrompt(null); }} style={S.btnOutline}>Skip</button>
+                  <button onClick={() => { decryptPrompt.resolve(decryptInput || null); setDecryptPrompt(null); }}
+                    disabled={!decryptInput} style={{ ...S.btnGreen, opacity: decryptInput ? 1 : 0.4 }}>Decrypt & Download</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Banners */}
+          {keyExpired && (
+            <div style={{ background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: "10px", padding: "14px 18px", marginBottom: "16px" }}>
+              <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>🔒 Decryption Key Destroyed — </span>
+              <span style={{ color: "#666", fontSize: "12px" }}>The key blob has expired on-chain.</span>
+            </div>
+          )}
+          {linkConsumed && isOneDownload && !keyExpired && (
+            <div style={{ background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: "10px", padding: "14px 18px", marginBottom: "16px" }}>
+              <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>⚡ Link Already Used — </span>
+              <span style={{ color: "#666", fontSize: "12px" }}>This was a one-time download link.</span>
+            </div>
+          )}
+
+          {/* Hero / typewriter when not searching */}
+          {!shown && (
+            <div style={{ padding: "60px 0 40px", textAlign: "center" }}>
+              <div style={{ fontSize: "48px", fontWeight: 800, color: "#4ade80", letterSpacing: "-1px", marginBottom: "8px", textShadow: "0 0 40px rgba(74,222,128,0.3)" }}>
+                BLOBSCAN
+              </div>
+              <div style={{ fontSize: "14px", color: "#444", marginBottom: "32px" }}>Real blob explorer · Shelby Network</div>
+              <div style={{ fontSize: "13px", color: "#333", minHeight: "20px" }}>
+                <span ref={twRef} style={{ color: "#4ade80" }}></span>
+                <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
+              </div>
+            </div>
+          )}
+
+          {/* Upload CTA */}
+          {!shown && (
+            <div style={{ ...S.card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderColor: "#1f2a1f" }}>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#e5e5e5", marginBottom: "3px" }}>Upload Files to Shelby Network</div>
+                <div style={{ fontSize: "12px", color: "#555" }}>Connect Petra wallet · Decentralized hot storage · Sub-second retrieval</div>
+              </div>
+              <a href="/upload" style={{ ...S.btnGreen, textDecoration: "none", display: "inline-block" }}>Upload Files →</a>
+            </div>
+          )}
+
+          {/* Search results */}
+          {shown && (
+            <>
+              {/* Balance */}
+              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+                <div style={{ ...S.card, flex: "0 0 auto", marginBottom: 0, minWidth: "160px" }}>
+                  <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>APT Balance</div>
+                  <div style={{ fontSize: "24px", fontWeight: 700, color: "#4ade80" }}>{loading ? "—" : apt}</div>
+                </div>
+                <div style={{ ...S.card, flex: "0 0 auto", marginBottom: 0, minWidth: "160px" }}>
+                  <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>ShelbyUSD</div>
+                  <div style={{ fontSize: "24px", fontWeight: 700, color: "#4ade80" }}>{loading ? "—" : usd}</div>
+                </div>
+                <div style={{ ...S.card, flex: 1, marginBottom: 0, minWidth: "220px" }}>
+                  <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Address</div>
+                  <div style={{ fontSize: "12px", color: "#666", wordBreak: "break-all", fontFamily: "monospace" }}>{searchAddr}</div>
+                </div>
+              </div>
+
+              {/* Files table */}
+              <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
+                {/* Table header */}
+                <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 100px 160px 80px 120px", gap: "0", padding: "10px 16px", borderBottom: "1px solid #1f1f1f", background: "#161616" }}>
+                  {["#", "FILE", "SIZE", "EXPIRES", "STATUS", "ACTIONS"].map(h => (
+                    <div key={h} style={{ fontSize: "10px", fontWeight: 600, color: "#444", textTransform: "uppercase", letterSpacing: "1px" }}>{h}</div>
+                  ))}
+                </div>
+
+                {blobsLoading ? (
+                  <div style={{ padding: "40px", textAlign: "center", color: "#444", fontSize: "13px" }}>
+                    <span style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid #2a2a2a", borderTop: "2px solid #4ade80", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginRight: "8px", verticalAlign: "middle" }} />
+                    Loading blobs…
+                  </div>
+                ) : !accountBlobs || accountBlobs.length === 0 ? (
+                  <div style={{ padding: "40px", textAlign: "center", color: "#444", fontSize: "13px" }}>No blobs found for this address.</div>
+                ) : accountBlobs.map((blob, i) => {
+                  const isImage = blob.blobNameSuffix.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
+                  const isVideo = blob.blobNameSuffix.match(/\.(mp4|webm|mov)$/i);
+                  const isAudio = blob.blobNameSuffix.match(/\.(mp3|wav|aac|m4a|flac|ogg)$/i);
+                  const isExpired = blob.expirationMicros < Date.now() * 1000;
+                  const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${searchAddr}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`;
+                  const isHighlighted = highlightBlob === blob.blobNameSuffix;
+                  if (isImage && !isExpired && !thumbnails[blob.blobNameSuffix]) loadThumbnail(blob.blobNameSuffix);
+                  return (
+                    <div key={i}>
+                      <div style={{
+                        display: "grid", gridTemplateColumns: "40px 1fr 100px 160px 80px 120px",
+                        gap: 0, padding: "10px 16px", alignItems: "center",
+                        borderBottom: i < accountBlobs.length - 1 ? "1px solid #1a1a1a" : "none",
+                        background: isHighlighted ? "rgba(74,222,128,0.04)" : "transparent",
+                        transition: "background 0.15s",
+                      }}
+                        onMouseEnter={e => { if (!isHighlighted) e.currentTarget.style.background = "#1f1f1f"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = isHighlighted ? "rgba(74,222,128,0.04)" : "transparent"; }}
+                      >
+                        {/* # */}
+                        <div style={{ fontSize: "12px", color: "#333" }}>{i + 1}</div>
+
+                        {/* File */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                          {isImage ? (
+                            <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
+                              style={{ width: "32px", height: "32px", background: "#222", borderRadius: "6px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "zoom-in", overflow: "hidden", flexShrink: 0 }}>
+                              {thumbnails[blob.blobNameSuffix] ? <img src={thumbnails[blob.blobNameSuffix]} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : loadingThumbs.has(blob.blobNameSuffix) ? "⏳" : "🖼"}
+                            </div>
+                          ) : isVideo || isAudio ? (
+                            <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
+                              style={{ width: "32px", height: "32px", background: "rgba(74,222,128,0.08)", borderRadius: "6px", border: "1px solid rgba(74,222,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "pointer", flexShrink: 0 }}>
+                              {previewLoading === blob.blobNameSuffix ? "⏳" : isAudio ? "🎵" : "▶️"}
+                            </div>
+                          ) : (
+                            <div style={{ width: "32px", height: "32px", background: "#1f1f1f", borderRadius: "6px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", flexShrink: 0 }}>📄</div>
+                          )}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: "13px", color: "#e5e5e5", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{blob.blobNameSuffix}</div>
+                            <div style={{ fontSize: "11px", color: "#444", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                              {isHighlighted && !linkConsumed && <span style={{ color: "#4ade80" }}>● Shared</span>}
+                              {isHighlighted && isOneDownload && <span style={{ color: "#fb923c" }}>⚡ ONE-DL</span>}
+                              {isHighlighted && linkConsumed && <span style={{ color: "#f87171" }}>CONSUMED</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Size */}
+                        <div style={{ fontSize: "12px", color: "#666" }}>{formatSize(blob.size)}</div>
+
+                        {/* Expires */}
+                        <div style={{ fontSize: "11px", color: isExpired ? "#f87171" : "#555" }}>
+                          {isExpired ? "Expired" : new Date(blob.expirationMicros / 1000).toLocaleDateString()}
+                        </div>
+
+                        {/* Status */}
+                        <div style={{ fontSize: "11px" }}>
+                          {blob.isDeleted ? <span style={{ color: "#f87171" }}>● Deleted</span>
+                            : blob.isWritten ? <span style={{ color: "#4ade80" }}>● Ready</span>
+                            : <span style={{ color: "#666" }}>● Pending</span>}
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                          <a href={explorerUrl} target="_blank"
+                            style={{ fontSize: "11px", color: "#444", textDecoration: "none", padding: "3px 8px", background: "#1f1f1f", border: "1px solid #2a2a2a", borderRadius: "5px" }}>↗</a>
+                          {!isExpired && blob.isWritten && !(isHighlighted && linkConsumed) && (
+                            <button onClick={() => handleDownload(blob.blobNameSuffix)} disabled={downloading === blob.blobNameSuffix}
+                              style={{ fontSize: "11px", color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "5px", padding: "3px 8px", cursor: "pointer", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1, fontFamily: "inherit" }}>
+                              {downloading === blob.blobNameSuffix ? "…" : "⬇"}
+                            </button>
+                          )}
+                          {!isExpired && blob.isWritten && (isVideo || isAudio) && !(isHighlighted && linkConsumed) && (
+                            <button onClick={async () => {
+                              if (inlinePlayer === blob.blobNameSuffix) {
+                                if (inlinePlayerUrl) URL.revokeObjectURL(inlinePlayerUrl);
+                                setInlinePlayer(null); setInlinePlayerUrl(null); return;
+                              }
+                              setInlinePlayer(blob.blobNameSuffix); setInlinePlayerUrl(null);
+                              try {
+                                const dl = await shelbyClient.download({ account: searchAddr!, blobName: blob.blobNameSuffix });
+                                const r = dl.readable.getReader(); const ch: Uint8Array[] = []; let len = 0;
+                                while (true) { const { done, value } = await r.read(); if (done) break; ch.push(value); len += value.length; }
+                                let d = new Uint8Array(len); let o = 0;
+                                for (const c of ch) { d.set(c, o); o += c.length; }
+                                let k = decryptKey;
+                                if (!k && keyBlobName && searchAddr) {
+                                  try {
+                                    const kb = await shelbyClient.download({ account: searchAddr, blobName: keyBlobName });
+                                    const kr = kb.readable.getReader(); const kc: Uint8Array[] = []; let kl = 0;
+                                    while (true) { const { done, value } = await kr.read(); if (done) break; kc.push(value); kl += value.length; }
+                                    const kd = new Uint8Array(kl); let ko = 0;
+                                    for (const c of kc) { kd.set(c, ko); ko += c.length; }
+                                    k = new TextDecoder().decode(kd);
+                                  } catch {}
+                                }
+                                if (k) { try { d = await decryptData(d, k); } catch {} }
+                                if (d.byteLength === 0) { alert("File is empty."); setInlinePlayer(null); return; }
+                                const ext = blob.blobNameSuffix.split(".").pop()?.toLowerCase() || "";
+                                const mimes: Record<string, string> = { mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac", m4a: "audio/mp4", flac: "audio/flac", ogg: "audio/ogg" };
+                                setInlinePlayerUrl(URL.createObjectURL(new Blob([d], { type: mimes[ext] || "application/octet-stream" })));
+                              } catch (e: any) { alert(`Play failed: ${e?.message}`); setInlinePlayer(null); }
+                            }}
+                              style={{ fontSize: "11px", color: inlinePlayer === blob.blobNameSuffix ? "#f87171" : "#a78bfa", background: "rgba(167,139,250,0.08)", border: `1px solid ${inlinePlayer === blob.blobNameSuffix ? "rgba(248,113,113,0.3)" : "rgba(167,139,250,0.2)"}`, borderRadius: "5px", padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>
+                              {inlinePlayer === blob.blobNameSuffix && !inlinePlayerUrl ? "…" : inlinePlayer === blob.blobNameSuffix ? "■" : "▶"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Inline player row */}
+                      {inlinePlayer === blob.blobNameSuffix && inlinePlayerUrl && (
+                        <div style={{ padding: "0 16px 12px", background: isHighlighted ? "rgba(74,222,128,0.04)" : "#111" }}>
+                          {isVideo
+                            ? <video src={inlinePlayerUrl} controls autoPlay playsInline style={{ width: "100%", maxHeight: "260px", borderRadius: "8px", background: "#000" }} />
+                            : <audio src={inlinePlayerUrl} controls autoPlay style={{ width: "100%", borderRadius: "8px" }} />
+                          }
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
-      )}
-      {/* Decrypt key prompt modal */}
-      {decryptPrompt && (
-        <div style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.85)", zIndex: 1000, alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "24px", maxWidth: "420px", width: "90%" }}>
-            <div style={{ fontSize: "13px", color: "#7dd3a8", marginBottom: "4px" }}>🔒 Encrypted Blob</div>
-            <div style={{ fontSize: "12px", color: "#888", marginBottom: "12px" }}>
-              <span style={{ color: "#a0c4ff" }}>{decryptPrompt.blobName}</span> may be encrypted. Enter the decryption key or skip to download raw data.
-            </div>
-            <input value={decryptInput} onChange={e => setDecryptInput(e.target.value)} placeholder="Enter decryption key..."
-              onKeyDown={e => { if (e.key === "Enter" && decryptInput) { decryptPrompt.resolve(decryptInput); setDecryptPrompt(null); } }}
-              style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "8px 12px", color: "#e0e0e0", fontFamily: "monospace", fontSize: "12px", marginBottom: "12px", boxSizing: "border-box" }} />
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              <button onClick={() => { decryptPrompt.resolve(null); setDecryptPrompt(null); }}
-                style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#888", fontFamily: "monospace", fontSize: "12px", cursor: "pointer" }}>Skip (raw)</button>
-              <button onClick={() => { decryptPrompt.resolve(decryptInput || null); setDecryptPrompt(null); }}
-                disabled={!decryptInput}
-                style={{ background: decryptInput ? "#7dd3a8" : "#333", color: "#0f0f0f", border: "none", borderRadius: "4px", padding: "6px 14px", fontFamily: "monospace", fontSize: "12px", cursor: decryptInput ? "pointer" : "default", fontWeight: "bold" }}>Decrypt & Download</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Consumed / key expired banner */}
-      {keyExpired && (
-        <div style={{ background: "#3a1010", border: "1px solid #f87171", borderRadius: "8px", padding: "16px", marginBottom: "16px", textAlign: "center" as const }}>
-          <div style={{ fontSize: "14px", color: "#f87171", fontWeight: "bold", marginBottom: "4px" }}>🔒 Decryption Key Destroyed</div>
-          <div style={{ fontSize: "12px", color: "#888" }}>The key blob has expired on-chain. This file can no longer be decrypted. The Shelby network automatically destroyed the decryption key.</div>
-        </div>
-      )}
-      {linkConsumed && isOneDownload && !keyExpired && (
-        <div style={{ background: "#3a1010", border: "1px solid #f87171", borderRadius: "8px", padding: "16px", marginBottom: "16px", textAlign: "center" as const }}>
-          <div style={{ fontSize: "14px", color: "#f87171", fontWeight: "bold", marginBottom: "4px" }}>⚡ This link has been consumed</div>
-          <div style={{ fontSize: "12px", color: "#888" }}>This was a one-time download link and has already been used.</div>
-        </div>
-      )}
-
-      {/* Wallet panel - top right */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <div />
-        {connected ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ background: "#1a1a1a", border: "1px solid #1a3a2a", borderRadius: "6px", padding: "6px 12px", fontSize: "11px" }}>
-              <span style={{ color: "#4ade80" }}>● Connected</span>
-              <span style={{ color: "#555", marginLeft: "6px" }}>{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}</span>
-            </div>
-            <button onClick={() => disconnect()}
-              style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Disconnect</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: "6px" }}>
-            {wallets.filter(w => w.name === "Petra").map((w) => (
-              <button key={w.name} onClick={() => connect(w.name)}
-                style={{ background: "#1a1a1a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "6px 14px", color: "#7dd3a8", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Connect Petra</button>
-            ))}
-            {wallets.filter(w => w.name === "Petra").length === 0 && (
-              <a href="https://petra.app" target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "6px 14px" }}>Install Petra</a>
-            )}
-          </div>
-        )}
-      </div>
-
-      <h1 style={{ color: "#7dd3a8", marginBottom: "4px" }}>BlobScan</h1>
-      <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>
-        <div style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>shelbynet · Real blob explorer</div>
-      </div>
-
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()} placeholder="Enter wallet address (0x...)"
-          style={{ flex: 1, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "10px 14px", color: "#e0e0e0", fontFamily: "monospace", fontSize: "13px", outline: "none" }} />
-        {connected && walletAddress && (
-          <button onClick={() => lookupAddress(walletAddress)}
-            style={{ background: "#1a1a1a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "10px 14px", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", color: "#7dd3a8", whiteSpace: "nowrap" }}>My</button>
-        )}
-        <button onClick={lookup} style={{ background: "#7dd3a8", color: "#0f0f0f", border: "none", borderRadius: "6px", padding: "10px 20px", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", fontWeight: "bold" }}>Look up</button>
-      </div>
-
-      <div style={{ fontSize: "12px", color: "#444", marginBottom: "24px", minHeight: "18px" }}>
-        <span ref={twRef} style={{ color: "#7dd3a8" }}></span>
-        <span style={{ display: "inline-block", width: "7px", height: "13px", background: "#7dd3a8", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite" }}></span>
-      </div>
-
-      <div style={card}>
-        <p style={{ fontSize: "13px", color: "#888", margin: "0 0 4px" }}>Want to upload files to the Shelby network?</p>
-        <p style={{ fontSize: "12px", color: "#555", margin: "0 0 12px" }}>Connect your Petra wallet and upload files directly to decentralized hot storage. Files are distributed across the Shelby node network for sub-second retrieval.</p>
-        <a href="/upload" style={{ display: "inline-block", color: "#7dd3a8", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "8px 18px", fontFamily: "monospace", fontSize: "12px", textDecoration: "none" }}>Upload Files →</a>
-      </div>
-
-      {shown && (
-        <>
-          <div style={card}>
-            <h2 style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>Balance</h2>
-            <div style={{ display: "flex", gap: "32px" }}>
-              <div><div style={{ fontSize: "12px", color: "#666" }}>APT</div><div style={{ fontSize: "24px", color: "#7dd3a8", fontWeight: "bold" }}>{loading ? "..." : apt}</div></div>
-              <div><div style={{ fontSize: "12px", color: "#666" }}>ShelbyUSD</div><div style={{ fontSize: "24px", color: "#7dd3a8", fontWeight: "bold" }}>{loading ? "..." : usd}</div></div>
-            </div>
-            <div style={{ fontSize: "11px", color: "#444", wordBreak: "break-all", marginTop: "8px" }}>{searchAddr}</div>
-          </div>
-
-          <div style={card}>
-            <h2 style={{ margin: "0 0 12px", fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>
-              Blob List {accountBlobs ? `(${accountBlobs.length})` : ""}
-            </h2>
-            {blobsLoading ? (
-              <div style={{ fontSize: "13px", color: "#7dd3a8" }}>Loading blobs from Shelby network...</div>
-            ) : !accountBlobs || accountBlobs.length === 0 ? (
-              <div style={{ fontSize: "13px", color: "#444" }}>No blobs found for this address.</div>
-            ) : accountBlobs.map((blob, i) => {
-              const isImage = blob.blobNameSuffix.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
-              const isVideo = blob.blobNameSuffix.match(/\.(mp4|webm|mov)$/i);
-              const isAudio = blob.blobNameSuffix.match(/\.(mp3|wav|aac|m4a|flac|ogg)$/i);
-              const isExpired = blob.expirationMicros < Date.now() * 1000;
-              const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${searchAddr}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`;
-              const isHighlighted = highlightBlob === blob.blobNameSuffix;
-              if (isImage && !isExpired && !thumbnails[blob.blobNameSuffix]) {
-                loadThumbnail(blob.blobNameSuffix);
-              }
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #2a2a2a", padding: "10px 0", ...(isHighlighted ? { background: "#0a1a0a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "10px", marginBottom: "4px" } : {}) }}>
-                  {isImage ? (
-                    <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
-                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: previewLoading === blob.blobNameSuffix ? "default" : "zoom-in", color: "#7dd3a8", overflow: "hidden", flexShrink: 0 }}>
-                      {previewLoading === blob.blobNameSuffix
-                        ? <span style={{ fontSize: "10px", color: "#555" }}>...</span>
-                        : thumbnails[blob.blobNameSuffix]
-                          ? <img src={thumbnails[blob.blobNameSuffix]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : loadingThumbs.has(blob.blobNameSuffix) ? <span style={{ fontSize: "10px", color: "#555" }}>...</span> : "🖼"}
-                    </div>
-                  ) : isVideo || isAudio ? (
-                    <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
-                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: previewLoading === blob.blobNameSuffix ? "10px" : "18px", cursor: previewLoading ? "default" : "pointer", color: "#7dd3a8" }}>
-                      {previewLoading === blob.blobNameSuffix ? "..." : isAudio ? "🎵" : "▶️"}
-                    </div>
-                  ) : (
-                    <div style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
-                      <span style={{ color: "#a0c4ff", fontSize: "13px", wordBreak: "break-all" }}>{blob.blobNameSuffix}</span>
-                      {isHighlighted && !linkConsumed && <span style={{ fontSize: "10px", color: "#7dd3a8", background: "#1a3a2a", padding: "1px 6px", borderRadius: "3px" }}>Shared with you</span>}
-                      {isHighlighted && isOneDownload && <span style={{ fontSize: "10px", color: "#f87171", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>⚡ ONE-DL</span>}
-                      {isHighlighted && linkConsumed && <span style={{ fontSize: "10px", color: "#f87171", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>CONSUMED</span>}
-                    </div>
-                    <div style={{ color: "#555", fontSize: "11px", marginTop: "2px" }}>
-                      {formatSize(blob.size)}
-                      {" · "}
-                      {isExpired
-                        ? <span style={{ color: "#f87171" }}>Expired</span>
-                        : <>Expires: {new Date(blob.expirationMicros / 1000).toLocaleString()}</>
-                      }
-                      {blob.isWritten && <span style={{ color: "#4ade80", marginLeft: "6px" }}>● Written</span>}
-                      {blob.isDeleted && <span style={{ color: "#f87171", marginLeft: "6px" }}>● Deleted</span>}
-                    </div>
-                    <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
-                      <a href={explorerUrl} target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a2a", borderRadius: "4px" }}>Explorer</a>
-                      {!isExpired && blob.isWritten && !(isHighlighted && linkConsumed) && (
-                        <button onClick={() => handleDownload(blob.blobNameSuffix)}
-                          disabled={downloading === blob.blobNameSuffix}
-                          style={{ color: "#7dd3a8", fontSize: "11px", background: "transparent", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px", cursor: "pointer", fontFamily: "monospace", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1 }}>
-                          {downloading === blob.blobNameSuffix ? "Downloading..." : "Download"}
-                        </button>
-                      )}
-                      {!isExpired && blob.isWritten && (isVideo || isAudio) && !(isHighlighted && linkConsumed) && (
-                        <button onClick={async () => {
-                          if (inlinePlayer === blob.blobNameSuffix) {
-                            if (inlinePlayerUrl) URL.revokeObjectURL(inlinePlayerUrl);
-                            setInlinePlayer(null);
-                            setInlinePlayerUrl(null);
-                            return;
-                          }
-                          setInlinePlayer(blob.blobNameSuffix);
-                          setInlinePlayerUrl(null);
-                          try {
-                            const dl = await shelbyClient.download({ account: searchAddr!, blobName: blob.blobNameSuffix });
-                            const r = dl.readable.getReader();
-                            const ch: Uint8Array[] = [];
-                            let len = 0;
-                            while (true) { const { done, value } = await r.read(); if (done) break; ch.push(value); len += value.length; }
-                            let d = new Uint8Array(len);
-                            let o = 0;
-                            for (const c of ch) { d.set(c, o); o += c.length; }
-                            // decrypt if needed
-                            let k = decryptKey;
-                            if (!k && keyBlobName && searchAddr) {
-                              try {
-                                const kb = await shelbyClient.download({ account: searchAddr, blobName: keyBlobName });
-                                const kr = kb.readable.getReader();
-                                const kc: Uint8Array[] = [];
-                                let kl = 0;
-                                while (true) { const { done, value } = await kr.read(); if (done) break; kc.push(value); kl += value.length; }
-                                const kd = new Uint8Array(kl);
-                                let ko = 0;
-                                for (const c of kc) { kd.set(c, ko); ko += c.length; }
-                                k = new TextDecoder().decode(kd);
-                              } catch {}
-                            }
-                            if (k) { try { d = await decryptData(d, k); } catch {} }
-                            if (d.byteLength === 0) { alert("File is empty (0 bytes)."); setInlinePlayer(null); return; }
-                            const ext = blob.blobNameSuffix.split(".").pop()?.toLowerCase() || "";
-                            const mimes: Record<string, string> = { mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac", m4a: "audio/mp4", flac: "audio/flac", ogg: "audio/ogg" };
-                            const url = URL.createObjectURL(new Blob([d], { type: mimes[ext] || "application/octet-stream" }));
-                            setInlinePlayerUrl(url);
-                          } catch (e: any) {
-                            alert(`Play failed: ${e?.message || "Unknown error"}`);
-                            setInlinePlayer(null);
-                          }
-                        }}
-                          style={{ color: inlinePlayer === blob.blobNameSuffix ? "#f87171" : "#a78bfa", fontSize: "11px", background: "transparent", padding: "4px 8px", border: `1px solid ${inlinePlayer === blob.blobNameSuffix ? "#f87171" : "#a78bfa"}`, borderRadius: "4px", cursor: "pointer", fontFamily: "monospace" }}>
-                          {inlinePlayer === blob.blobNameSuffix && !inlinePlayerUrl ? "Loading..." : inlinePlayer === blob.blobNameSuffix ? "Stop" : isAudio ? "Play" : "Play"}
-                        </button>
-                      )}
-                      {isHighlighted && linkConsumed && (
-                        <span style={{ color: "#f87171", fontSize: "11px", padding: "4px 8px", border: "1px solid #3a1010", borderRadius: "4px" }}>Link used</span>
-                      )}
-                    </div>
-                    {inlinePlayer === blob.blobNameSuffix && inlinePlayerUrl && (
-                      <div style={{ marginTop: "8px" }}>
-                        {isVideo ? (
-                          <video src={inlinePlayerUrl} controls autoPlay playsInline style={{ width: "100%", maxHeight: "300px", borderRadius: "6px", background: "#000" }} />
-                        ) : (
-                          <audio src={inlinePlayerUrl} controls autoPlay style={{ width: "100%", borderRadius: "6px" }} />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: "800px", margin: "0 auto", background: "#1a1a1a", borderTop: "1px solid #2a2a2a", padding: "12px 20px", zIndex: 100 }}>
-        <h2 style={{ margin: "0 0 6px", fontSize: "13px", color: "#888", textTransform: "uppercase", letterSpacing: "1px" }}>Network Status</h2>
-        {netStatus ? (
-          <div style={{ fontSize: "12px" }}>
-            <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: "4px", fontSize: "12px", marginRight: "6px", background: "#1a3a2a", color: "#4ade80" }}>Online</span>
-            <span style={{ color: "#555" }}>Block: <span style={{ color: "#a0c4ff" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></span>
-            {" · "}
-            <span style={{ color: "#555" }}>TPS: <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></span>
-            {netStatus.totalBlobs && <>{" · "}<span style={{ color: "#555" }}>Total Blobs: <span style={{ color: "#a0c4ff" }}>{netStatus.totalBlobs}</span></span></>}
-            {netStatus.totalStorage && <>{" · "}<span style={{ color: "#555" }}>Storage: <span style={{ color: "#a0c4ff" }}>{netStatus.totalStorage}</span></span></>}
-            {" · "}
-            <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ color: "#7dd3a8", fontSize: "12px" }}>explorer.shelby.xyz</a>
-          </div>
-        ) : <div style={{ fontSize: "12px", color: "#555" }}>Loading...</div>}
-      </div>
-
-      <div style={{ textAlign: "center" as const, fontSize: "11px", color: "#333", padding: "40px 0 16px" }}>
-        Built by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#555", textDecoration: "none" }}>@solscammer</a>
-      </div>
-      <style>{`
-        @keyframes blink { 50% { opacity: 0; } }
-        .blobscan-root { padding: 32px; }
-        @media (max-width: 600px) {
-          .blobscan-root { padding: 14px; }
-        }
-      `}</style>
+      </main>
     </div>
   );
 }
