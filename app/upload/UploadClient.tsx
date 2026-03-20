@@ -580,20 +580,20 @@ export default function UploadClient() {
     <main style={{ display: "flex", background: "#111", minHeight: "100vh" }}>
       {/* Sidebar */}
       <aside style={{ width: "190px", minHeight: "100vh", background: "#161616", borderRight: "1px solid #242424", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 }}>
-        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid #1f1f1f" }}>
+        <div style={{ padding: "16px 14px 14px", borderBottom: "1px solid #1f1f1f" }}>
           <a href="/" style={{ textDecoration: "none" }}>
-            <div style={{ fontSize: "17px", fontWeight: 700, color: "#4ade80", letterSpacing: "-0.3px", display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "20px" }}>⬡</span> BlobScan
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#39FF14", textShadow: "0 0 8px rgba(57,255,20,0.6)", letterSpacing: "1px" }}>
+              BLOBSCAN
             </div>
-            <div style={{ fontSize: "10px", color: "#444", marginTop: "2px", marginLeft: "28px" }}>Shelby Network</div>
+            <div style={{ fontSize: "9px", color: "#333", marginTop: "6px" }}>Shelby Network</div>
           </a>
         </div>
         <nav style={{ padding: "10px 0", flex: 1 }}>
-          {[{ label: "Home", href: "/", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
-            { label: "Explorer", href: "/", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" },
-            { label: "Upload", href: "/upload", icon: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12", active: true }
+          {[{ label: "Home", href: "/", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z", active: false },
+            { label: "Upload", href: "/upload", icon: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12", active: true },
+            { label: "Explorer ↗", href: "https://explorer.shelby.xyz/shelbynet", icon: "M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3", active: false },
           ].map(item => (
-            <a key={item.label} href={item.href} style={{ textDecoration: "none" }}>
+            <a key={item.label} href={item.href} target={item.label.includes("↗") ? "_blank" : undefined} style={{ textDecoration: "none" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", fontSize: "14px", color: item.active ? "#4ade80" : "#888", background: item.active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: item.active ? 600 : 400 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={item.icon} /></svg>
                 {item.label}
@@ -607,7 +607,8 @@ export default function UploadClient() {
       </aside>
 
       {/* Main */}
-      <div className="upload-root" style={{ marginLeft: "190px", flex: 1, color: "#e5e5e5", padding: "28px", minHeight: "100vh" }}>
+      <div style={{ marginLeft: "190px", flex: 1, minHeight: "100vh", paddingBottom: "32px" }}>
+      <div className="upload-root" style={{ maxWidth: "800px", margin: "0 auto", color: "#e5e5e5", padding: "28px 24px" }}>
 
       {qrModal && (
         <div onClick={() => setQrModal(null)} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.88)", zIndex: 1000, alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
@@ -629,22 +630,23 @@ export default function UploadClient() {
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <a href="/" style={{ color: "#555", textDecoration: "none", fontSize: "13px" }}>← Back to BlobScan</a>
+      {/* Top row: title + wallet */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+        <div>
+          <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "clamp(13px, 2vw, 18px)", color: "#39FF14", textShadow: "0 0 10px rgba(57,255,20,0.5)", marginBottom: "10px", letterSpacing: "1px" }}>UPLOAD</h1>
+          <p style={{ color: "#555", fontSize: "12px" }}>Shelby Network · AES-256-GCM · SHA-256 integrity</p>
+        </div>
         {connected && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ background: "#1a1a1a", border: "1px solid #1a3a2a", borderRadius: "6px", padding: "6px 12px", fontSize: "11px" }}>
-              <span style={{ color: "#4ade80" }}>● Synced</span>
-              <span style={{ color: "#555", marginLeft: "6px" }}>{displayAddress?.slice(0, 8)}...{displayAddress?.slice(-6)}</span>
+            <div style={{ background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
+              <span style={{ color: "#666" }}>{displayAddress?.slice(0, 6)}…{displayAddress?.slice(-4)}</span>
             </div>
             <button onClick={() => { disconnect(); addEvent("WALLET_DISCONNECTED", "Wallet disconnected"); }}
-              style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "4px 8px", color: "#555",  fontSize: "11px", cursor: "pointer" }}>Disconnect</button>
+              style={{ background: "transparent", border: "1px solid #242424", borderRadius: "8px", padding: "5px 10px", color: "#555", fontSize: "11px", cursor: "pointer", fontFamily: "inherit" }}>Disconnect</button>
           </div>
         )}
       </div>
-
-      <h1 style={{ color: "#4ade80", marginTop: "8px", marginBottom: "4px" }}>Upload to Shelby</h1>
-      <p style={{ color: "#666", fontSize: "13px", marginBottom: "24px" }}>Decentralized hot storage · AES-256-GCM encryption · SHA-256 integrity · Real blob uploads</p>
 
       {!connected ? (
         <div style={card}>
@@ -756,8 +758,8 @@ export default function UploadClient() {
                     <option value="604800">7 days</option>
                     <option value="2592000">30 days</option>
                   </select>
-                  <button onClick={handleUpload} disabled={fileInfos.length === 0 || isUploading} style={{ ...btn, flex: 1, opacity: fileInfos.length === 0 || isUploading ? 0.5 : 1 }}>
-                    {isUploading ? "Uploading to Shelby..." : status || "Upload to Shelby Network"}
+                  <button onClick={handleUpload} disabled={fileInfos.length === 0 || isUploading} style={{ ...btn, padding: "8px 20px", fontSize: "13px", opacity: fileInfos.length === 0 || isUploading ? 0.5 : 1 }}>
+                    {isUploading ? "Uploading…" : "Upload"}
                   </button>
                 </div>
 
@@ -881,6 +883,7 @@ export default function UploadClient() {
           )}
         </>
       )}
+      </div>
       </div>
     </main>
   );
