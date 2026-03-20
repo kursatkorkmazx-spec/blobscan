@@ -384,24 +384,26 @@ export default function BlobScanClient() {
   }
 
   async function handlePreviewBlob(blobNameSuffix: string) {
-    console.log(`[preview] clicked: suffix="${blobNameSuffix}" searchAddr="${searchAddr}" previewLoading="${previewLoading}"`);
     if (!searchAddr || previewLoading) return;
     setPreviewLoading(blobNameSuffix);
     try {
-      // Bypass SDK stream wrapper — fetch directly to avoid ReadableStream issues in some browsers
-      const baseUrl: string = (shelbyClient as any).rpc?.baseUrl ?? "https://api.shelbynet.shelby.xyz/shelby";
-      const blobPath = blobNameSuffix.split("/").map(encodeURIComponent).join("/");
-      const fetchUrl = `${baseUrl}/v1/blobs/${searchAddr}/${blobPath}`;
-      const headers: Record<string, string> = {};
-      const apiKey = process.env.NEXT_PUBLIC_SHELBY_API_KEY;
-      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-      console.log(`[preview] fetching: ${fetchUrl}`);
-      const response = await fetch(fetchUrl, { headers });
-      console.log(`[preview] status=${response.status} content-length=${response.headers.get("content-length")} content-type=${response.headers.get("content-type")}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-      const arrayBuffer = await response.arrayBuffer();
-      const data = new Uint8Array(arrayBuffer);
-      console.log(`[preview] arrayBuffer byteLength=${arrayBuffer.byteLength}`);
+      // Use SDK download (same approach that works for thumbnails)
+      const blob = await shelbyClient.download({ account: searchAddr, blobName: blobNameSuffix });
+      const reader = blob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.byteLength;
+      }
+      const data = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
       const videoExts = ["mp4", "webm", "mov"];
