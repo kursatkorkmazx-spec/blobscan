@@ -384,6 +384,7 @@ export default function BlobScanClient() {
   }
 
   async function handlePreviewBlob(blobNameSuffix: string) {
+    console.log(`[preview] clicked: suffix="${blobNameSuffix}" searchAddr="${searchAddr}" previewLoading="${previewLoading}"`);
     if (!searchAddr || previewLoading) return;
     setPreviewLoading(blobNameSuffix);
     try {
