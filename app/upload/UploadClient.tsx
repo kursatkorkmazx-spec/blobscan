@@ -347,8 +347,10 @@ export default function UploadClient() {
 
         // Register file blobs (normal expiration)
         if (fileBlobsToRegister.length > 0) {
+          // Save sizes before generateCommitments which may detach the underlying ArrayBuffer
+          const fileBlobSizes = fileBlobsToRegister.map(b => b.blobData.length);
           const fileCommitments = await Promise.all(
-            fileBlobsToRegister.map(async (blob) => generateCommitments(provider, blob.blobData))
+            fileBlobsToRegister.map(async (blob) => generateCommitments(provider, blob.blobData.slice()))
           );
 
           setStatus("Waiting for wallet approval (file registration)...");
@@ -360,9 +362,9 @@ export default function UploadClient() {
               expirationMicros,
               blobs: fileBlobsToRegister.map((blob, index) => ({
                 blobName: blob.blobName,
-                blobSize: blob.blobData.length,
+                blobSize: fileBlobSizes[index],
                 blobMerkleRoot: fileCommitments[index].blob_merkle_root,
-                numChunksets: expectedTotalChunksets(blob.blobData.length, chunksetSize),
+                numChunksets: expectedTotalChunksets(fileBlobSizes[index], chunksetSize),
               })),
               encoding: provider.config.enumIndex,
             }),
@@ -377,8 +379,9 @@ export default function UploadClient() {
 
         // Register key blobs (short expiration) — separate TX!
         if (keyBlobsToRegister.length > 0) {
+          const keyBlobSizes = keyBlobsToRegister.map(b => b.blobData.length);
           const keyCommitments = await Promise.all(
-            keyBlobsToRegister.map(async (blob) => generateCommitments(provider, blob.blobData))
+            keyBlobsToRegister.map(async (blob) => generateCommitments(provider, blob.blobData.slice()))
           );
 
           setStatus("Waiting for wallet approval (key blob registration)...");
@@ -390,9 +393,9 @@ export default function UploadClient() {
               expirationMicros: keyExpirationMicros,
               blobs: keyBlobsToRegister.map((blob, index) => ({
                 blobName: blob.blobName,
-                blobSize: blob.blobData.length,
+                blobSize: keyBlobSizes[index],
                 blobMerkleRoot: keyCommitments[index].blob_merkle_root,
-                numChunksets: expectedTotalChunksets(blob.blobData.length, chunksetSize),
+                numChunksets: expectedTotalChunksets(keyBlobSizes[index], chunksetSize),
               })),
               encoding: provider.config.enumIndex,
             }),
