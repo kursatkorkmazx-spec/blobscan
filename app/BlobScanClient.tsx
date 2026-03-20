@@ -436,7 +436,26 @@ export default function BlobScanClient() {
       {modalSrc && (
         <div onClick={() => { URL.revokeObjectURL(modalSrc); setModalSrc(""); }} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
           {modalType === "video" ? (
-            <video src={modalSrc} controls autoPlay style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} onClick={e => e.stopPropagation()} />
+            <video
+              src={modalSrc}
+              controls
+              autoPlay
+              muted
+              playsInline
+              style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }}
+              onClick={e => e.stopPropagation()}
+              onError={e => {
+                const v = e.currentTarget as HTMLVideoElement;
+                const code = v.error?.code;
+                const msgs: Record<number, string> = {
+                  1: "Yükleme iptal edildi",
+                  2: "Ağ hatası",
+                  3: "Video çözülemiyor (codec sorunu)",
+                  4: "Bu format desteklenmiyor",
+                };
+                alert(`Video oynatılamadı: ${msgs[code ?? 0] ?? "Bilinmeyen hata"}`);
+              }}
+            />
           ) : (
             <img src={modalSrc} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }} />
           )}
