@@ -421,8 +421,13 @@ export default function BlobScanClient() {
       const isVideo = videoExts.includes(ext);
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
+      if (totalLength === 0) {
+        alert("Preview failed: received 0 bytes from the network.");
+        return;
+      }
       const mediaBlob = new Blob([data], { type: mime });
       const url = URL.createObjectURL(mediaBlob);
+      console.log(`[preview] ext=${ext} mime=${mime} size=${totalLength} url=${url}`);
       setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
     } catch (err: any) {
@@ -455,7 +460,8 @@ export default function BlobScanClient() {
                   3: "Decode error (unsupported codec — try H.264)",
                   4: "Format not supported by this browser",
                 };
-                alert(`Video playback failed (error ${code ?? "?"}): ${msgs[code ?? 0] ?? "Unknown error"}`);
+                const detail = v.error?.message || "";
+                alert(`Video playback failed (error ${code ?? "?"}): ${msgs[code ?? 0] ?? "Unknown error"}\n\nBrowser: ${detail}\n\nCheck browser console for blob URL and size info.`);
               }}
             />
           ) : modalType === "audio" ? (
