@@ -413,7 +413,11 @@ export default function UploadClient() {
       // Step 3: Upload blob data to RPC (file blobs + key blobs)
       setStatus("Uploading blob data to storage providers...");
       for (const blob of allBlobs) {
-        addEvent("BLOB_UPLOADED", `Uploading ${blob.blobName} to RPC...`);
+        console.log(`[upload] putBlob: name="${blob.blobName}" blobData.byteLength=${blob.blobData.byteLength} blobData.buffer.byteLength=${blob.blobData.buffer.byteLength}`);
+        if (blob.blobData.byteLength === 0) {
+          console.error(`[upload] WARNING: blobData is 0 bytes for ${blob.blobName}! ArrayBuffer likely detached.`);
+        }
+        addEvent("BLOB_UPLOADED", `Uploading ${blob.blobName} (${blob.blobData.byteLength} bytes) to RPC...`);
         await shelbyClient.rpc.putBlob({
           account: accountAddress,
           blobName: blob.blobName,
