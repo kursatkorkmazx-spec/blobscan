@@ -469,10 +469,10 @@ export default function BlobScanClient() {
     topbar: { background: "#0d0d0d", borderBottom: "1px solid #1f1f1f", padding: "0 24px", height: "52px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 40 } as const,
     content: { padding: "28px 28px 80px", flex: 1 } as const,
     input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "8px 14px", color: "#e5e5e5", fontSize: "13px", outline: "none", fontFamily: "inherit" } as const,
-    btnGreen: { background: "#4ade80", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } as const,
+    btnGreen: { background: "#39FF14", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } as const,
     btnOutline: { background: "transparent", border: "1px solid #333", borderRadius: "8px", padding: "6px 14px", color: "#aaa", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
-    btnGreenOutline: { background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "8px", padding: "6px 14px", color: "#4ade80", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
-    navItem: (active: boolean) => ({ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", cursor: "pointer", fontSize: "14px", color: active ? "#4ade80" : "#aaa", background: active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: active ? 600 : 400 } as const),
+    btnGreenOutline: { background: "rgba(57,255,20,0.1)", border: "1px solid rgba(57,255,20,0.3)", borderRadius: "8px", padding: "6px 14px", color: "#39FF14", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
+    navItem: (active: boolean) => ({ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", cursor: "pointer", fontSize: "14px", color: active ? "#39FF14" : "#aaa", background: active ? "rgba(57,255,20,0.1)" : "transparent", fontWeight: active ? 600 : 400 } as const),
     card: { background: "#161616", border: "1px solid #222", borderRadius: "12px", padding: "20px", marginBottom: "12px" } as const,
   };
 
@@ -487,10 +487,10 @@ export default function BlobScanClient() {
       <aside style={S.sidebar}>
         {/* Logo */}
         <div style={{ padding: "16px 14px 14px", borderBottom: "1px solid #1f1f1f" }}>
-          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#39FF14", textShadow: "0 0 8px rgba(57,255,20,0.6)", letterSpacing: "1px" }}>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "14px", color: "#39FF14", textShadow: "0 0 8px rgba(57,255,20,0.6)", letterSpacing: "1px" }}>
             BLOBSCAN
           </div>
-          <div style={{ fontSize: "9px", color: "#333", marginTop: "6px" }}>Shelby Network</div>
+          <div style={{ fontSize: "10px", color: "#666", marginTop: "8px" }}>Shelby Network</div>
         </div>
 
         {/* Nav */}
@@ -515,8 +515,8 @@ export default function BlobScanClient() {
           </a>
         </nav>
 
-        <div style={{ padding: "12px 16px", borderTop: "1px solid #1f1f1f", fontSize: "10px", color: "#2a2a2a" }}>
-          by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#333", textDecoration: "none" }}>@solscammer</a>
+        <div style={{ padding: "12px 16px", borderTop: "1px solid #1f1f1f", fontSize: "10px", color: "#666" }}>
+          by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#666", textDecoration: "none" }}>@solscammer</a>
         </div>
       </aside>
 
@@ -528,7 +528,7 @@ export default function BlobScanClient() {
               <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 10px" }}>My Wallet</button>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#161616", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#39FF14", display: "inline-block", animation: "pulse-green 2s infinite" }} />
               <span style={{ color: "#aaa" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
             </div>
             <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 10px", fontSize: "12px" }}>Disconnect</button>
@@ -583,8 +583,8 @@ export default function BlobScanClient() {
 
             {/* Typewriter */}
             <div style={{ fontSize: "13px", color: "#666", minHeight: "22px", marginBottom: "28px" }}>
-              <span ref={twRef} style={{ color: "#4ade80" }}></span>
-              <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
+              <span ref={twRef} style={{ color: "#39FF14" }}></span>
+              <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#39FF14", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
             </div>
 
             {/* Search bar */}
@@ -635,7 +635,7 @@ export default function BlobScanClient() {
           {decryptPrompt && (
             <div style={{ display: "flex", position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000, alignItems: "center", justifyContent: "center" }}>
               <div style={{ ...S.card, maxWidth: "400px", width: "90%", padding: "28px" }}>
-                <div style={{ fontSize: "13px", color: "#4ade80", marginBottom: "4px", fontWeight: 600 }}>🔒 Encrypted Blob</div>
+                <div style={{ fontSize: "13px", color: "#39FF14", marginBottom: "4px", fontWeight: 600 }}>🔒 Encrypted Blob</div>
                 <div style={{ fontSize: "12px", color: "#666", marginBottom: "14px" }}><span style={{ color: "#888" }}>{decryptPrompt.blobName}</span> may be encrypted.</div>
                 <input value={decryptInput} onChange={e => setDecryptInput(e.target.value)} placeholder="Enter decryption key…"
                   onKeyDown={e => { if (e.key === "Enter" && decryptInput) { decryptPrompt.resolve(decryptInput); setDecryptPrompt(null); } }}
@@ -670,11 +670,11 @@ export default function BlobScanClient() {
               <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
                 <div style={{ ...S.card, flex: "0 0 auto", marginBottom: 0, minWidth: "160px" }}>
                   <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>APT Balance</div>
-                  <div style={{ fontSize: "24px", fontWeight: 700, color: "#4ade80" }}>{loading ? "—" : apt}</div>
+                  <div style={{ fontSize: "24px", fontWeight: 700, color: "#39FF14" }}>{loading ? "—" : apt}</div>
                 </div>
                 <div style={{ ...S.card, flex: "0 0 auto", marginBottom: 0, minWidth: "160px" }}>
                   <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>ShelbyUSD</div>
-                  <div style={{ fontSize: "24px", fontWeight: 700, color: "#4ade80" }}>{loading ? "—" : usd}</div>
+                  <div style={{ fontSize: "24px", fontWeight: 700, color: "#39FF14" }}>{loading ? "—" : usd}</div>
                 </div>
                 <div style={{ ...S.card, flex: 1, marginBottom: 0, minWidth: "220px" }}>
                   <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Address</div>
@@ -693,7 +693,7 @@ export default function BlobScanClient() {
 
                 {blobsLoading ? (
                   <div style={{ padding: "40px", textAlign: "center", color: "#444", fontSize: "13px" }}>
-                    <span style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid #2a2a2a", borderTop: "2px solid #4ade80", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginRight: "8px", verticalAlign: "middle" }} />
+                    <span style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid #2a2a2a", borderTop: "2px solid #39FF14", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginRight: "8px", verticalAlign: "middle" }} />
                     Loading blobs…
                   </div>
                 ) : !accountBlobs || accountBlobs.length === 0 ? (
@@ -712,11 +712,11 @@ export default function BlobScanClient() {
                         display: "grid", gridTemplateColumns: "40px 1fr 100px 160px 80px 120px",
                         gap: 0, padding: "10px 16px", alignItems: "center",
                         borderBottom: i < accountBlobs.length - 1 ? "1px solid #1a1a1a" : "none",
-                        background: isHighlighted ? "rgba(74,222,128,0.04)" : "transparent",
+                        background: isHighlighted ? "rgba(57,255,20,0.04)" : "transparent",
                         transition: "background 0.15s",
                       }}
                         onMouseEnter={e => { if (!isHighlighted) e.currentTarget.style.background = "#1f1f1f"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = isHighlighted ? "rgba(74,222,128,0.04)" : "transparent"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = isHighlighted ? "rgba(57,255,20,0.04)" : "transparent"; }}
                       >
                         {/* # */}
                         <div style={{ fontSize: "12px", color: "#333" }}>{i + 1}</div>
@@ -730,7 +730,7 @@ export default function BlobScanClient() {
                             </div>
                           ) : isVideo || isAudio ? (
                             <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
-                              style={{ width: "32px", height: "32px", background: "rgba(74,222,128,0.08)", borderRadius: "6px", border: "1px solid rgba(74,222,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "pointer", flexShrink: 0 }}>
+                              style={{ width: "32px", height: "32px", background: "rgba(57,255,20,0.08)", borderRadius: "6px", border: "1px solid rgba(57,255,20,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "pointer", flexShrink: 0 }}>
                               {previewLoading === blob.blobNameSuffix ? "⏳" : isAudio ? "🎵" : "▶️"}
                             </div>
                           ) : (
@@ -739,7 +739,7 @@ export default function BlobScanClient() {
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: "13px", color: "#e5e5e5", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{blob.blobNameSuffix}</div>
                             <div style={{ fontSize: "11px", color: "#444", display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                              {isHighlighted && !linkConsumed && <span style={{ color: "#4ade80" }}>● Shared</span>}
+                              {isHighlighted && !linkConsumed && <span style={{ color: "#39FF14" }}>● Shared</span>}
                               {isHighlighted && isOneDownload && <span style={{ color: "#fb923c" }}>⚡ ONE-DL</span>}
                               {isHighlighted && linkConsumed && <span style={{ color: "#f87171" }}>CONSUMED</span>}
                             </div>
@@ -757,7 +757,7 @@ export default function BlobScanClient() {
                         {/* Status */}
                         <div style={{ fontSize: "11px" }}>
                           {blob.isDeleted ? <span style={{ color: "#f87171" }}>● Deleted</span>
-                            : blob.isWritten ? <span style={{ color: "#4ade80" }}>● Ready</span>
+                            : blob.isWritten ? <span style={{ color: "#39FF14" }}>● Ready</span>
                             : <span style={{ color: "#666" }}>● Pending</span>}
                         </div>
 
@@ -767,7 +767,7 @@ export default function BlobScanClient() {
                             style={{ fontSize: "11px", color: "#444", textDecoration: "none", padding: "3px 8px", background: "#1f1f1f", border: "1px solid #2a2a2a", borderRadius: "5px" }}>↗</a>
                           {!isExpired && blob.isWritten && !(isHighlighted && linkConsumed) && (
                             <button onClick={() => handleDownload(blob.blobNameSuffix)} disabled={downloading === blob.blobNameSuffix}
-                              style={{ fontSize: "11px", color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "5px", padding: "3px 8px", cursor: "pointer", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1, fontFamily: "inherit" }}>
+                              style={{ fontSize: "11px", color: "#39FF14", background: "rgba(57,255,20,0.08)", border: "1px solid rgba(57,255,20,0.2)", borderRadius: "5px", padding: "3px 8px", cursor: "pointer", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1, fontFamily: "inherit" }}>
                               {downloading === blob.blobNameSuffix ? "…" : "⬇"}
                             </button>
                           )}
@@ -811,7 +811,7 @@ export default function BlobScanClient() {
 
                       {/* Inline player row */}
                       {inlinePlayer === blob.blobNameSuffix && inlinePlayerUrl && (
-                        <div style={{ padding: "0 16px 12px", background: isHighlighted ? "rgba(74,222,128,0.04)" : "#111" }}>
+                        <div style={{ padding: "0 16px 12px", background: isHighlighted ? "rgba(57,255,20,0.04)" : "#111" }}>
                           {isVideo
                             ? <video src={inlinePlayerUrl} controls autoPlay playsInline style={{ width: "100%", maxHeight: "260px", borderRadius: "8px", background: "#000" }} />
                             : <audio src={inlinePlayerUrl} controls autoPlay style={{ width: "100%", borderRadius: "8px" }} />
@@ -832,11 +832,11 @@ export default function BlobScanClient() {
         {netStatus ? (
           <>
             <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px" }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
-              <span style={{ color: "#4ade80" }}>Online</span>
+              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#39FF14", display: "inline-block", animation: "pulse-green 2s infinite" }} />
+              <span style={{ color: "#39FF14" }}>Online</span>
             </span>
             <span style={{ fontSize: "11px", color: "#666" }}>Block <span style={{ color: "#999" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></span>
-            <span style={{ fontSize: "11px", color: "#666" }}>TPS <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></span>
+            <span style={{ fontSize: "11px", color: "#666" }}>TPS <span style={{ color: "#39FF14" }}>{netStatus.tps}</span></span>
             <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ fontSize: "11px", color: "#777", textDecoration: "none", marginLeft: "4px" }}>explorer.shelby.xyz ↗</a>
           </>
         ) : (
