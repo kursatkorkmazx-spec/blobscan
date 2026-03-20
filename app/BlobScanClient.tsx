@@ -90,6 +90,7 @@ export default function BlobScanClient() {
   const [netStatus, setNetStatus] = useState<any>(null);
   const [modalSrc, setModalSrc] = useState("");
   const [modalType, setModalType] = useState<"image" | "video">("image");
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [loadingThumbs, setLoadingThumbs] = useState<Set<string>>(new Set());
@@ -383,7 +384,8 @@ export default function BlobScanClient() {
   }
 
   async function handlePreviewBlob(blobNameSuffix: string) {
-    if (!searchAddr) return;
+    if (!searchAddr || previewLoading) return;
+    setPreviewLoading(blobNameSuffix);
     try {
       const blob = await shelbyClient.download({
         account: searchAddr,
@@ -421,6 +423,8 @@ export default function BlobScanClient() {
       setModalSrc(url);
     } catch (err: any) {
       alert(`Preview failed: ${err?.message || "Unknown error"}`);
+    } finally {
+      setPreviewLoading(null);
     }
   }
 
@@ -557,14 +561,18 @@ export default function BlobScanClient() {
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid #2a2a2a", padding: "10px 0", ...(isHighlighted ? { background: "#0a1a0a", border: "1px solid #7dd3a8", borderRadius: "6px", padding: "10px", marginBottom: "4px" } : {}) }}>
                   {isImage ? (
                     <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
-                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: "zoom-in", color: "#7dd3a8", overflow: "hidden", flexShrink: 0 }}>
-                      {thumbnails[blob.blobNameSuffix]
-                        ? <img src={thumbnails[blob.blobNameSuffix]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : loadingThumbs.has(blob.blobNameSuffix) ? <span style={{ fontSize: "10px", color: "#555" }}>...</span> : "🖼"}
+                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", cursor: previewLoading === blob.blobNameSuffix ? "default" : "zoom-in", color: "#7dd3a8", overflow: "hidden", flexShrink: 0 }}>
+                      {previewLoading === blob.blobNameSuffix
+                        ? <span style={{ fontSize: "10px", color: "#555" }}>...</span>
+                        : thumbnails[blob.blobNameSuffix]
+                          ? <img src={thumbnails[blob.blobNameSuffix]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : loadingThumbs.has(blob.blobNameSuffix) ? <span style={{ fontSize: "10px", color: "#555" }}>...</span> : "🖼"}
                     </div>
                   ) : isVideo ? (
                     <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
-                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", cursor: "pointer" }}>▶️</div>
+                      style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: previewLoading === blob.blobNameSuffix ? "10px" : "18px", cursor: previewLoading ? "default" : "pointer", color: "#7dd3a8" }}>
+                      {previewLoading === blob.blobNameSuffix ? "..." : "▶️"}
+                    </div>
                   ) : (
                     <div style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>
                   )}
