@@ -428,7 +428,14 @@ export default function UploadClient() {
         });
         addEvent("BLOB_UPLOADED", `${blob.blobName} sent to RPC`);
 
-        // Verify: immediately try to download and check size
+        // Verify: wait 3s then try to download and check size
+        await new Promise(r => setTimeout(r, 3000));
+        // Also log direct fetch for debugging
+        const directUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${accountAddress.toString()}/${encodeURIComponent(blob.blobName)}`;
+        try {
+          const directResp = await fetch(directUrl);
+          console.log(`[upload] DIRECT GET ${directUrl} → status=${directResp.status} content-length=${directResp.headers.get("content-length")} content-type=${directResp.headers.get("content-type")}`);
+        } catch(de) { console.error("[upload] DIRECT GET error:", de); }
         try {
           const verify = await shelbyClient.download({ account: accountAddress, blobName: blob.blobName });
           const vReader = verify.readable.getReader();
