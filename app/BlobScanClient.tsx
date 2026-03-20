@@ -392,11 +392,20 @@ export default function BlobScanClient() {
         blobName: blobNameSuffix,
       });
 
-      // Use Response API — more reliable than manual chunk assembly
-      const arrayBuffer = await new Response(shelbyBlob.readable).arrayBuffer();
-
-      if (arrayBuffer.byteLength === 0) {
-        throw new Error("İndirilen dosya boş (0 byte)");
+      const reader = shelbyBlob.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.byteLength;
+      }
+      const data = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.byteLength;
       }
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
@@ -412,10 +421,10 @@ export default function BlobScanClient() {
       const isVideo = videoExts.includes(ext);
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
-      // For video/audio: don't set MIME type — let browser detect from magic bytes.
-      // Setting an incorrect or strict MIME can cause MEDIA_ERR_SRC_NOT_SUPPORTED.
+      // For video/audio: omit MIME type so browser detects from magic bytes.
+      // A strict MIME type can cause MEDIA_ERR_SRC_NOT_SUPPORTED on codec mismatch.
       const blobType = (isVideo || isAudio) ? "" : mime;
-      const mediaBlob = new Blob([arrayBuffer], { type: blobType });
+      const mediaBlob = new Blob([data], { type: blobType });
       const url = URL.createObjectURL(mediaBlob);
       setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
