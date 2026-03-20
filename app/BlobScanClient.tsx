@@ -93,6 +93,8 @@ export default function BlobScanClient() {
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [inlinePlayer, setInlinePlayer] = useState<string | null>(null);
+  const [inlinePlayerUrl, setInlinePlayerUrl] = useState<string | null>(null);
   const [loadingThumbs, setLoadingThumbs] = useState<Set<string>>(new Set());
   const [accountBlobs, setAccountBlobs] = useState<BlobInfo[]>([]);
   const [blobsLoading, setBlobsLoading] = useState(false);
@@ -387,7 +389,7 @@ export default function BlobScanClient() {
     if (!searchAddr || previewLoading) return;
     setPreviewLoading(blobNameSuffix);
     try {
-      // Use SDK download (same approach that works for thumbnails)
+      // Use the same download+decrypt logic that handleDownload uses
       const blob = await shelbyClient.download({ account: searchAddr, blobName: blobNameSuffix });
       const reader = blob.readable.getReader();
       const chunks: Uint8Array[] = [];
@@ -396,13 +398,43 @@ export default function BlobScanClient() {
         const { done, value } = await reader.read();
         if (done) break;
         chunks.push(value);
-        totalLength += value.byteLength;
+        totalLength += value.length;
       }
-      const data = new Uint8Array(totalLength);
+      let data = new Uint8Array(totalLength);
       let offset = 0;
       for (const chunk of chunks) {
         data.set(chunk, offset);
-        offset += chunk.byteLength;
+        offset += chunk.length;
+      }
+
+      // Decrypt if share link provides a key
+      let key = decryptKey;
+      if (!key && keyBlobName && searchAddr) {
+        try {
+          const keyBlob = await shelbyClient.download({ account: searchAddr, blobName: keyBlobName });
+          const keyReader = keyBlob.readable.getReader();
+          const keyChunks: Uint8Array[] = [];
+          let keyLen = 0;
+          while (true) {
+            const { done, value } = await keyReader.read();
+            if (done) break;
+            keyChunks.push(value);
+            keyLen += value.length;
+          }
+          const keyData = new Uint8Array(keyLen);
+          let keyOffset = 0;
+          for (const c of keyChunks) { keyData.set(c, keyOffset); keyOffset += c.length; }
+          key = new TextDecoder().decode(keyData);
+        } catch { /* key not available */ }
+      }
+      if (key) {
+        try { data = await decryptData(data, key); } catch { /* not encrypted or wrong key */ }
+      }
+
+      console.log(`[preview] downloaded ${data.byteLength} bytes for ${blobNameSuffix}`);
+      if (data.byteLength === 0) {
+        alert("Preview failed: file is empty (0 bytes).");
+        return;
       }
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
@@ -418,13 +450,8 @@ export default function BlobScanClient() {
       const isVideo = videoExts.includes(ext);
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
-      if (data.byteLength === 0) {
-        alert("Preview failed: server returned 0 bytes.");
-        return;
-      }
       const mediaBlob = new Blob([data], { type: mime });
       const url = URL.createObjectURL(mediaBlob);
-      console.log(`[preview] ext=${ext} mime=${mime} size=${data.byteLength} url=${url}`);
       setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
     } catch (err: any) {
@@ -646,10 +673,68 @@ export default function BlobScanClient() {
                           {downloading === blob.blobNameSuffix ? "Downloading..." : "Download"}
                         </button>
                       )}
+                      {!isExpired && blob.isWritten && (isVideo || isAudio) && !(isHighlighted && linkConsumed) && (
+                        <button onClick={async () => {
+                          if (inlinePlayer === blob.blobNameSuffix) {
+                            if (inlinePlayerUrl) URL.revokeObjectURL(inlinePlayerUrl);
+                            setInlinePlayer(null);
+                            setInlinePlayerUrl(null);
+                            return;
+                          }
+                          setInlinePlayer(blob.blobNameSuffix);
+                          setInlinePlayerUrl(null);
+                          try {
+                            const dl = await shelbyClient.download({ account: searchAddr!, blobName: blob.blobNameSuffix });
+                            const r = dl.readable.getReader();
+                            const ch: Uint8Array[] = [];
+                            let len = 0;
+                            while (true) { const { done, value } = await r.read(); if (done) break; ch.push(value); len += value.length; }
+                            let d = new Uint8Array(len);
+                            let o = 0;
+                            for (const c of ch) { d.set(c, o); o += c.length; }
+                            // decrypt if needed
+                            let k = decryptKey;
+                            if (!k && keyBlobName && searchAddr) {
+                              try {
+                                const kb = await shelbyClient.download({ account: searchAddr, blobName: keyBlobName });
+                                const kr = kb.readable.getReader();
+                                const kc: Uint8Array[] = [];
+                                let kl = 0;
+                                while (true) { const { done, value } = await kr.read(); if (done) break; kc.push(value); kl += value.length; }
+                                const kd = new Uint8Array(kl);
+                                let ko = 0;
+                                for (const c of kc) { kd.set(c, ko); ko += c.length; }
+                                k = new TextDecoder().decode(kd);
+                              } catch {}
+                            }
+                            if (k) { try { d = await decryptData(d, k); } catch {} }
+                            if (d.byteLength === 0) { alert("File is empty (0 bytes)."); setInlinePlayer(null); return; }
+                            const ext = blob.blobNameSuffix.split(".").pop()?.toLowerCase() || "";
+                            const mimes: Record<string, string> = { mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac", m4a: "audio/mp4", flac: "audio/flac", ogg: "audio/ogg" };
+                            const url = URL.createObjectURL(new Blob([d], { type: mimes[ext] || "application/octet-stream" }));
+                            setInlinePlayerUrl(url);
+                          } catch (e: any) {
+                            alert(`Play failed: ${e?.message || "Unknown error"}`);
+                            setInlinePlayer(null);
+                          }
+                        }}
+                          style={{ color: inlinePlayer === blob.blobNameSuffix ? "#f87171" : "#a78bfa", fontSize: "11px", background: "transparent", padding: "4px 8px", border: `1px solid ${inlinePlayer === blob.blobNameSuffix ? "#f87171" : "#a78bfa"}`, borderRadius: "4px", cursor: "pointer", fontFamily: "monospace" }}>
+                          {inlinePlayer === blob.blobNameSuffix && !inlinePlayerUrl ? "Loading..." : inlinePlayer === blob.blobNameSuffix ? "Stop" : isAudio ? "Play" : "Play"}
+                        </button>
+                      )}
                       {isHighlighted && linkConsumed && (
                         <span style={{ color: "#f87171", fontSize: "11px", padding: "4px 8px", border: "1px solid #3a1010", borderRadius: "4px" }}>Link used</span>
                       )}
                     </div>
+                    {inlinePlayer === blob.blobNameSuffix && inlinePlayerUrl && (
+                      <div style={{ marginTop: "8px" }}>
+                        {isVideo ? (
+                          <video src={inlinePlayerUrl} controls autoPlay playsInline style={{ width: "100%", maxHeight: "300px", borderRadius: "6px", background: "#000" }} />
+                        ) : (
+                          <audio src={inlinePlayerUrl} controls autoPlay style={{ width: "100%", borderRadius: "6px" }} />
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
