@@ -183,7 +183,6 @@ export default function UploadClient() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [txHash, setTxHash] = useState("");
-  const [customNames, setCustomNames] = useState<string[]>([]);
   const [qrModal, setQrModal] = useState<{ url: string; dataUrl: string } | null>(null);
 
   async function showQR(url: string) {
@@ -229,7 +228,6 @@ export default function UploadClient() {
       return { file: f, hash, preview };
     }));
     setFileInfos(infos);
-    setCustomNames(infos.map(fi => fi.file.name));
     addEvent("FILE_SELECTED", `${files.length} file(s) selected`);
   }
 
@@ -268,7 +266,7 @@ export default function UploadClient() {
 
       for (let idx = 0; idx < fileInfos.length; idx++) {
         const fi = fileInfos[idx];
-        const blobFileName = (customNames[idx] || fi.file.name).trim() || fi.file.name;
+        const blobFileName = fi.file.name;
         let data = new Uint8Array(await fi.file.arrayBuffer());
 
         // Encrypt if enabled or ONE-DL
@@ -428,7 +426,7 @@ export default function UploadClient() {
       const keyLifetimeLabel = keyLifetimeSec === 300 ? "5 min" : keyLifetimeSec === 1800 ? "30 min" : keyLifetimeSec === 3600 ? "1 hour" : `${keyLifetimeSec}s`;
       const newRecords: VaultRecord[] = fileInfos.map((fi, idx) => {
         const ownerAddr = accountAddress;
-        const blobFileName = (customNames[idx] || fi.file.name).trim() || fi.file.name;
+        const blobFileName = fi.file.name;
         const keyBlobName = isOneDL ? `${blobFileName}.shelbykey` : undefined;
         // ONE-DL link: no key in URL, key is fetched from on-chain blob
         const link = isOneDL
@@ -467,7 +465,7 @@ export default function UploadClient() {
       // Refresh blob list
       loadBlobs();
 
-      setTimeout(() => { setStatus(""); setShareLink(""); }, 12000);
+      setTimeout(() => setStatus(""), 8000);
     } catch (err: any) {
       const msg = err?.message || "Upload failed";
       setStatus(`Error: ${msg}`);
@@ -670,37 +668,9 @@ export default function UploadClient() {
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px 0", borderBottom: i < fileInfos.length - 1 ? "1px solid #2a2a2a" : "none" }}>
                           {fi.preview ? <img src={fi.preview} style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "4px", border: "1px solid #2a2a2a" }} /> : <div style={{ width: "48px", height: "48px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "2px" }}>
-                              <input
-                                value={customNames[i] ?? fi.file.name}
-                                onChange={e => {
-                                  const newVal = e.target.value;
-                                  const origName = fi.file.name;
-                                  const dotIdx = origName.lastIndexOf(".");
-                                  const ext = dotIdx !== -1 ? origName.slice(dotIdx) : "";
-                                  if (ext && !newVal.endsWith(ext)) return;
-                                  setCustomNames(prev => { const n = [...prev]; n[i] = newVal; return n; });
-                                }}
-                                onKeyDown={e => {
-                                  const origName = fi.file.name;
-                                  const dotIdx = origName.lastIndexOf(".");
-                                  const ext = dotIdx !== -1 ? origName.slice(dotIdx) : "";
-                                  if (!ext) return;
-                                  const cur = customNames[i] ?? origName;
-                                  const baseName = cur.slice(0, cur.length - ext.length);
-                                  if ((e.key === "Backspace" || e.key === "Delete") && baseName.length === 0) {
-                                    e.preventDefault();
-                                  }
-                                }}
-                                onClick={e => e.stopPropagation()}
-                                title="Click to rename"
-                                style={{ background: "transparent", border: "none", borderBottom: "1px dashed #3a3a5a", color: "#a0c4ff", fontSize: "13px", fontFamily: "monospace", width: "100%", outline: "none", padding: "2px 0", cursor: "text" }}
-                              />
-                              <span style={{ color: "#444", fontSize: "10px", whiteSpace: "nowrap", flexShrink: 0 }}>✏️ rename</span>
+                            <div style={{ marginBottom: "2px" }}>
+                              <span style={{ color: "#a0c4ff", fontSize: "13px", fontFamily: "monospace" }}>{fi.file.name}</span>
                             </div>
-                            {customNames[i] && customNames[i] !== fi.file.name && (
-                              <div style={{ color: "#555", fontSize: "10px" }}>original: {fi.file.name}</div>
-                            )}
                             <div style={{ color: "#555", fontSize: "11px" }}>{fileType(fi.file.name)} · {formatSize(fi.file.size)}</div>
                             <div style={{ color: "#333", fontSize: "10px", marginTop: "2px" }}>SHA-256: {fi.hash.slice(0, 16)}...{fi.hash.slice(-8)}</div>
                           </div>
@@ -796,7 +766,10 @@ export default function UploadClient() {
 
                 {shareLink && (
                   <div style={{ background: "#0a1a0a", border: "1px solid #1a3a1a", borderRadius: "6px", padding: "12px" }}>
-                    <div style={{ fontSize: "11px", color: "#4ade80", marginBottom: "6px" }}>Share Link (blob stored on Shelby network):</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <div style={{ fontSize: "11px", color: "#4ade80" }}>Share Link (blob stored on Shelby network):</div>
+                      <button onClick={() => setShareLink("")} style={{ background: "transparent", border: "none", color: "#555", cursor: "pointer", fontSize: "14px", lineHeight: 1, padding: "0 2px" }}>×</button>
+                    </div>
                     <div style={{ display: "flex", gap: "8px" }}>
                       <input readOnly value={shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 10px", color: "#888", fontFamily: "monospace", fontSize: "10px" }} />
                       <button onClick={() => copyToClipboard(shareLink)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#7dd3a8", cursor: "pointer", fontSize: "11px" }}>Copy</button>
