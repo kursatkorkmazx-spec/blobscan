@@ -486,25 +486,21 @@ export default function BlobScanClient() {
       {/* ── Sidebar ── */}
       <aside style={S.sidebar}>
         {/* Logo */}
-        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid #1f1f1f" }}>
-          <div style={{ fontSize: "17px", fontWeight: 700, color: "#4ade80", letterSpacing: "-0.3px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "20px" }}>⬡</span> BlobScan
+        <div style={{ padding: "16px 14px 14px", borderBottom: "1px solid #1f1f1f" }}>
+          <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#39FF14", textShadow: "0 0 8px rgba(57,255,20,0.6)", letterSpacing: "1px" }}>
+            BLOBSCAN
           </div>
-          <div style={{ fontSize: "10px", color: "#444", marginTop: "2px", marginLeft: "28px" }}>Shelby Network</div>
+          <div style={{ fontSize: "9px", color: "#333", marginTop: "6px" }}>Shelby Network</div>
         </div>
 
         {/* Nav */}
         <nav style={{ padding: "10px 0", flex: 1 }}>
           <a href="/" style={{ textDecoration: "none" }}>
-            <div style={S.navItem(!shown)}>
+            <div style={S.navItem(true)}>
               <NavIcon d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
               Home
             </div>
           </a>
-          <div style={S.navItem(shown)}>
-            <NavIcon d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
-            Explorer
-          </div>
           <a href="/upload" style={{ textDecoration: "none" }}>
             <div style={S.navItem(false)}>
               <NavIcon d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
@@ -519,24 +515,8 @@ export default function BlobScanClient() {
           </a>
         </nav>
 
-        {/* Network status */}
-        <div style={{ borderTop: "1px solid #1f1f1f", padding: "14px 16px" }}>
-          <div style={{ fontSize: "10px", color: "#444", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>Network</div>
-          {netStatus ? (
-            <div style={{ fontSize: "12px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
-                <span style={{ color: "#4ade80", fontWeight: 600 }}>Online</span>
-              </div>
-              <div style={{ color: "#555", fontSize: "11px" }}>Block <span style={{ color: "#888" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></div>
-              <div style={{ color: "#555", fontSize: "11px" }}>TPS <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></div>
-            </div>
-          ) : (
-            <div style={{ fontSize: "11px", color: "#444" }}>Connecting…</div>
-          )}
-          <div style={{ marginTop: "12px", fontSize: "10px", color: "#333" }}>
-            by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#3a3a3a", textDecoration: "none" }}>@solscammer</a>
-          </div>
+        <div style={{ padding: "12px 16px", borderTop: "1px solid #1f1f1f", fontSize: "10px", color: "#2a2a2a" }}>
+          by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#333", textDecoration: "none" }}>@solscammer</a>
         </div>
       </aside>
 
@@ -545,41 +525,45 @@ export default function BlobScanClient() {
 
         {/* Top bar */}
         <header style={S.topbar}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "0 14px", height: "34px" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
-              placeholder="Search wallet address (0x…)"
-              style={{ background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "13px", flex: 1, fontFamily: "inherit" }} />
+          {/* Search — left */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "0 12px", height: "32px", width: "280px" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input value={addr} onChange={e => setAddr(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()}
+                placeholder="Search wallet (0x…)"
+                style={{ background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "12px", width: "100%", fontFamily: "inherit" }} />
+            </div>
+            {connected && walletAddress && (
+              <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 10px" }}>My Wallet</button>
+            )}
+            <button onClick={lookup} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Search</button>
           </div>
-          {connected && walletAddress && (
-            <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 12px" }}>My Wallet</button>
-          )}
-          <button onClick={lookup} style={{ ...S.btnGreen, padding: "6px 16px", fontSize: "13px" }}>Search</button>
 
-          {/* Wallet */}
-          <div style={{ width: "1px", height: "20px", background: "#242424", margin: "0 4px" }} />
-          {connected ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", animation: "pulse-green 2s infinite" }} />
-                <span style={{ color: "#888" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
-              </div>
-              <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 12px", fontSize: "12px" }}>Disconnect</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: "8px" }}>
-              {wallets.filter(w => w.name === "Petra").map(w => (
-                <button key={w.name} onClick={() => connect(w.name)} style={{ ...S.btnGreen, padding: "6px 14px", fontSize: "12px" }}>Connect Petra</button>
-              ))}
-              {wallets.filter(w => w.name === "Petra").length === 0 && (
-                <a href="https://petra.app" target="_blank" style={{ ...S.btnOutline, textDecoration: "none", padding: "6px 14px", fontSize: "12px" }}>Install Petra</a>
-              )}
-            </div>
-          )}
+          {/* Wallet — far right */}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
+            {connected ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
+                  <span style={{ color: "#888" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
+                </div>
+                <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 10px", fontSize: "12px" }}>Disconnect</button>
+              </>
+            ) : (
+              <>
+                {wallets.filter(w => w.name === "Petra").map(w => (
+                  <button key={w.name} onClick={() => connect(w.name)} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Connect Petra</button>
+                ))}
+                {wallets.filter(w => w.name === "Petra").length === 0 && (
+                  <a href="https://petra.app" target="_blank" style={{ ...S.btnOutline, textDecoration: "none", padding: "5px 12px", fontSize: "12px" }}>Install Petra</a>
+                )}
+              </>
+            )}
+          </div>
         </header>
 
-        {/* Content */}
-        <div style={S.content}>
+        {/* Content — centered */}
+        <div style={{ ...S.content, maxWidth: "900px", width: "100%", margin: "0 auto" }}>
 
           {/* Modals */}
           {modalSrc && (
@@ -635,10 +619,18 @@ export default function BlobScanClient() {
           {/* Hero / typewriter when not searching */}
           {!shown && (
             <div style={{ padding: "60px 0 40px", textAlign: "center" }}>
-              <div style={{ fontSize: "48px", fontWeight: 800, color: "#4ade80", letterSpacing: "-1px", marginBottom: "8px", textShadow: "0 0 40px rgba(74,222,128,0.3)" }}>
+              <div style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: "clamp(20px, 3.5vw, 38px)",
+                color: "#39FF14",
+                letterSpacing: "2px",
+                marginBottom: "16px",
+                textShadow: "0 0 10px #39FF14, 0 0 30px rgba(57,255,20,0.5), 0 0 60px rgba(57,255,20,0.2)",
+                lineHeight: 1.4,
+              }}>
                 BLOBSCAN
               </div>
-              <div style={{ fontSize: "14px", color: "#444", marginBottom: "32px" }}>Real blob explorer · Shelby Network</div>
+              <div style={{ fontSize: "13px", color: "#444", marginBottom: "32px" }}>Real blob explorer · Shelby Network</div>
               <div style={{ fontSize: "13px", color: "#333", minHeight: "20px" }}>
                 <span ref={twRef} style={{ color: "#4ade80" }}></span>
                 <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
@@ -820,6 +812,23 @@ export default function BlobScanClient() {
           )}
         </div>
       </main>
+
+      {/* ── Fixed bottom network bar ── */}
+      <div style={{ position: "fixed", bottom: 0, left: "190px", right: 0, zIndex: 40, background: "rgba(17,17,17,0.95)", borderTop: "1px solid #1f1f1f", padding: "0 24px", height: "32px", display: "flex", alignItems: "center", gap: "16px", backdropFilter: "blur(8px)" }}>
+        {netStatus ? (
+          <>
+            <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px" }}>
+              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
+              <span style={{ color: "#4ade80" }}>Online</span>
+            </span>
+            <span style={{ fontSize: "11px", color: "#3a3a3a" }}>Block <span style={{ color: "#555" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></span>
+            <span style={{ fontSize: "11px", color: "#3a3a3a" }}>TPS <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></span>
+            <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ fontSize: "11px", color: "#333", textDecoration: "none", marginLeft: "4px" }}>explorer.shelby.xyz ↗</a>
+          </>
+        ) : (
+          <span style={{ fontSize: "11px", color: "#333" }}>Connecting to Shelby Network…</span>
+        )}
+      </div>
     </div>
   );
 }
