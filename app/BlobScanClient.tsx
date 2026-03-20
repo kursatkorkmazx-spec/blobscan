@@ -387,25 +387,16 @@ export default function BlobScanClient() {
     if (!searchAddr || previewLoading) return;
     setPreviewLoading(blobNameSuffix);
     try {
-      const blob = await shelbyClient.download({
+      const shelbyBlob = await shelbyClient.download({
         account: searchAddr,
         blobName: blobNameSuffix,
       });
 
-      const reader = blob.readable.getReader();
-      const chunks: Uint8Array[] = [];
-      let totalLength = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        totalLength += value.length;
-      }
-      const data = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        data.set(chunk, offset);
-        offset += chunk.length;
+      // Use Response API — more reliable than manual chunk assembly
+      const arrayBuffer = await new Response(shelbyBlob.readable).arrayBuffer();
+
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error("İndirilen dosya boş (0 byte)");
       }
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
@@ -421,7 +412,10 @@ export default function BlobScanClient() {
       const isVideo = videoExts.includes(ext);
       const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
-      const mediaBlob = new Blob([data], { type: mime });
+      // For video/audio: don't set MIME type — let browser detect from magic bytes.
+      // Setting an incorrect or strict MIME can cause MEDIA_ERR_SRC_NOT_SUPPORTED.
+      const blobType = (isVideo || isAudio) ? "" : mime;
+      const mediaBlob = new Blob([arrayBuffer], { type: blobType });
       const url = URL.createObjectURL(mediaBlob);
       setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
@@ -452,10 +446,10 @@ export default function BlobScanClient() {
                 const msgs: Record<number, string> = {
                   1: "Yükleme iptal edildi",
                   2: "Ağ hatası",
-                  3: "Video çözülemiyor (codec sorunu)",
-                  4: "Bu format desteklenmiyor",
+                  3: "Video çözülemiyor (codec sorunu — H.264/H.265 uyumsuzluğu olabilir)",
+                  4: "Bu format bu tarayıcıda desteklenmiyor",
                 };
-                alert(`Video oynatılamadı: ${msgs[code ?? 0] ?? "Bilinmeyen hata"}`);
+                alert(`Video oynatılamadı (hata ${code ?? "?"}): ${msgs[code ?? 0] ?? "Bilinmeyen hata"}\n\nDosyayı indirip VLC ile açmayı deneyin.`);
               }}
             />
           ) : modalType === "audio" ? (
@@ -472,9 +466,9 @@ export default function BlobScanClient() {
                   1: "Yükleme iptal edildi",
                   2: "Ağ hatası",
                   3: "Ses çözülemiyor (codec sorunu)",
-                  4: "Bu format desteklenmiyor",
+                  4: "Bu format bu tarayıcıda desteklenmiyor",
                 };
-                alert(`Ses oynatılamadı: ${msgs[code ?? 0] ?? "Bilinmeyen hata"}`);
+                alert(`Ses oynatılamadı (hata ${code ?? "?"}): ${msgs[code ?? 0] ?? "Bilinmeyen hata"}\n\nDosyayı indirip yerel oynatıcıda açmayı deneyin.`);
               }}
             />
           ) : (
