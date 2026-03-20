@@ -464,16 +464,16 @@ export default function BlobScanClient() {
 
   // ─── Styles ──────────────────────────────────────────────────────────────────
   const S = {
-    sidebar: { width: "190px", minHeight: "100vh", background: "#161616", borderRight: "1px solid #242424", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 } as const,
+    sidebar: { width: "190px", minHeight: "100vh", background: "#111", borderRight: "1px solid #1f1f1f", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 } as const,
     main: { marginLeft: "190px", minHeight: "100vh", display: "flex", flexDirection: "column" } as const,
-    topbar: { background: "#111", borderBottom: "1px solid #242424", padding: "0 24px", height: "52px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 40 } as const,
+    topbar: { background: "#0d0d0d", borderBottom: "1px solid #1f1f1f", padding: "0 24px", height: "52px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 40 } as const,
     content: { padding: "28px 28px 80px", flex: 1 } as const,
     input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "8px 14px", color: "#e5e5e5", fontSize: "13px", outline: "none", fontFamily: "inherit" } as const,
     btnGreen: { background: "#4ade80", color: "#0a0a0a", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } as const,
-    btnOutline: { background: "transparent", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "6px 14px", color: "#888", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
+    btnOutline: { background: "transparent", border: "1px solid #333", borderRadius: "8px", padding: "6px 14px", color: "#aaa", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
     btnGreenOutline: { background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "8px", padding: "6px 14px", color: "#4ade80", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" } as const,
-    navItem: (active: boolean) => ({ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", cursor: "pointer", fontSize: "14px", color: active ? "#4ade80" : "#888", background: active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: active ? 600 : 400 } as const),
-    card: { background: "#1a1a1a", border: "1px solid #242424", borderRadius: "12px", padding: "20px", marginBottom: "12px" } as const,
+    navItem: (active: boolean) => ({ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", margin: "2px 10px", cursor: "pointer", fontSize: "14px", color: active ? "#4ade80" : "#aaa", background: active ? "rgba(74,222,128,0.1)" : "transparent", fontWeight: active ? 600 : 400 } as const),
+    card: { background: "#161616", border: "1px solid #222", borderRadius: "12px", padding: "20px", marginBottom: "12px" } as const,
   };
 
   const NavIcon = ({ d }: { d: string }) => (
@@ -481,7 +481,7 @@ export default function BlobScanClient() {
   );
 
   return (
-    <div style={{ display: "flex", background: "#111", minHeight: "100vh" }}>
+    <div style={{ display: "flex", background: "#0d0d0d", minHeight: "100vh" }}>
 
       {/* ── Sidebar ── */}
       <aside style={S.sidebar}>
@@ -533,9 +533,6 @@ export default function BlobScanClient() {
                 placeholder="Search wallet (0x…)"
                 style={{ background: "transparent", border: "none", outline: "none", color: "#e5e5e5", fontSize: "12px", width: "100%", fontFamily: "inherit" }} />
             </div>
-            {connected && walletAddress && (
-              <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 10px" }}>My Wallet</button>
-            )}
             <button onClick={lookup} style={{ ...S.btnGreen, padding: "5px 14px", fontSize: "12px" }}>Search</button>
           </div>
 
@@ -543,9 +540,12 @@ export default function BlobScanClient() {
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
             {connected ? (
               <>
+                {walletAddress && (
+                  <button onClick={() => lookupAddress(walletAddress)} style={{ ...S.btnGreenOutline, fontSize: "12px", padding: "5px 10px" }}>My Wallet</button>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1a1a1a", border: "1px solid #242424", borderRadius: "8px", padding: "5px 12px", fontSize: "12px" }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
-                  <span style={{ color: "#888" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
+                  <span style={{ color: "#aaa" }}>{walletAddress?.slice(0, 6)}…{walletAddress?.slice(-4)}</span>
                 </div>
                 <button onClick={() => disconnect()} style={{ ...S.btnOutline, padding: "5px 10px", fontSize: "12px" }}>Disconnect</button>
               </>
@@ -616,36 +616,37 @@ export default function BlobScanClient() {
             </div>
           )}
 
-          {/* Hero / typewriter when not searching */}
+          {/* Hero + Upload CTA — centered vertically when not searching */}
           {!shown && (
-            <div style={{ padding: "60px 0 40px", textAlign: "center" }}>
-              <div style={{
-                fontFamily: "'Press Start 2P', monospace",
-                fontSize: "clamp(20px, 3.5vw, 38px)",
-                color: "#39FF14",
-                letterSpacing: "2px",
-                marginBottom: "16px",
-                textShadow: "0 0 10px #39FF14, 0 0 30px rgba(57,255,20,0.5), 0 0 60px rgba(57,255,20,0.2)",
-                lineHeight: 1.4,
-              }}>
-                BLOBSCAN
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 84px)", textAlign: "center" }}>
+              {/* Hero / typewriter */}
+              <div style={{ marginBottom: "40px", width: "100%" }}>
+                <div style={{
+                  fontFamily: "'Press Start 2P', monospace",
+                  fontSize: "clamp(20px, 3.5vw, 38px)",
+                  color: "#39FF14",
+                  letterSpacing: "2px",
+                  marginBottom: "16px",
+                  textShadow: "0 0 10px #39FF14, 0 0 30px rgba(57,255,20,0.5), 0 0 60px rgba(57,255,20,0.2)",
+                  lineHeight: 1.4,
+                }}>
+                  BLOBSCAN
+                </div>
+                <div style={{ fontSize: "13px", color: "#777", marginBottom: "32px" }}>Real blob explorer · Shelby Network</div>
+                <div style={{ fontSize: "13px", color: "#666", minHeight: "20px" }}>
+                  <span ref={twRef} style={{ color: "#4ade80" }}></span>
+                  <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
+                </div>
               </div>
-              <div style={{ fontSize: "13px", color: "#444", marginBottom: "32px" }}>Real blob explorer · Shelby Network</div>
-              <div style={{ fontSize: "13px", color: "#333", minHeight: "20px" }}>
-                <span ref={twRef} style={{ color: "#4ade80" }}></span>
-                <span style={{ display: "inline-block", width: "2px", height: "14px", background: "#4ade80", marginLeft: "2px", verticalAlign: "middle", animation: "blink 0.8s step-end infinite", borderRadius: "1px" }}></span>
-              </div>
-            </div>
-          )}
 
-          {/* Upload CTA */}
-          {!shown && (
-            <div style={{ ...S.card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderColor: "#1f2a1f" }}>
-              <div>
-                <div style={{ fontSize: "14px", fontWeight: 600, color: "#e5e5e5", marginBottom: "3px" }}>Upload Files to Shelby Network</div>
-                <div style={{ fontSize: "12px", color: "#555" }}>Connect Petra wallet · Decentralized hot storage · Sub-second retrieval</div>
+              {/* Upload CTA */}
+              <div style={{ ...S.card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderColor: "#1f2a1f", width: "100%", maxWidth: "600px", textAlign: "left" }}>
+                <div>
+                  <div style={{ fontSize: "14px", fontWeight: 600, color: "#e5e5e5", marginBottom: "3px" }}>Upload Files to Shelby Network</div>
+                  <div style={{ fontSize: "12px", color: "#888" }}>Connect Petra wallet · Decentralized hot storage · Sub-second retrieval</div>
+                </div>
+                <a href="/upload" style={{ ...S.btnGreen, textDecoration: "none", display: "inline-block" }}>Upload Files →</a>
               </div>
-              <a href="/upload" style={{ ...S.btnGreen, textDecoration: "none", display: "inline-block" }}>Upload Files →</a>
             </div>
           )}
 
@@ -814,19 +815,19 @@ export default function BlobScanClient() {
       </main>
 
       {/* ── Fixed bottom network bar ── */}
-      <div style={{ position: "fixed", bottom: 0, left: "190px", right: 0, zIndex: 40, background: "rgba(17,17,17,0.95)", borderTop: "1px solid #1f1f1f", padding: "0 24px", height: "32px", display: "flex", alignItems: "center", gap: "16px", backdropFilter: "blur(8px)" }}>
+      <div style={{ position: "fixed", bottom: 0, left: "190px", right: 0, zIndex: 40, background: "rgba(17,17,17,0.95)", borderTop: "1px solid #1f1f1f", padding: "0 24px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", backdropFilter: "blur(8px)" }}>
         {netStatus ? (
           <>
             <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px" }}>
               <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-green 2s infinite" }} />
               <span style={{ color: "#4ade80" }}>Online</span>
             </span>
-            <span style={{ fontSize: "11px", color: "#3a3a3a" }}>Block <span style={{ color: "#555" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></span>
-            <span style={{ fontSize: "11px", color: "#3a3a3a" }}>TPS <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></span>
-            <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ fontSize: "11px", color: "#333", textDecoration: "none", marginLeft: "4px" }}>explorer.shelby.xyz ↗</a>
+            <span style={{ fontSize: "11px", color: "#666" }}>Block <span style={{ color: "#999" }}>{parseInt(netStatus.block_height).toLocaleString()}</span></span>
+            <span style={{ fontSize: "11px", color: "#666" }}>TPS <span style={{ color: "#4ade80" }}>{netStatus.tps}</span></span>
+            <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ fontSize: "11px", color: "#777", textDecoration: "none", marginLeft: "4px" }}>explorer.shelby.xyz ↗</a>
           </>
         ) : (
-          <span style={{ fontSize: "11px", color: "#333" }}>Connecting to Shelby Network…</span>
+          <span style={{ fontSize: "11px", color: "#777" }}>Connecting to Shelby Network…</span>
         )}
       </div>
     </div>
