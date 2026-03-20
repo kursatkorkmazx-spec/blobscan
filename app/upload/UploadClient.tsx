@@ -423,16 +423,17 @@ export default function UploadClient() {
 
       // Create vault records
       const keyLifetimeLabel = keyLifetimeSec === 300 ? "5 min" : keyLifetimeSec === 1800 ? "30 min" : keyLifetimeSec === 3600 ? "1 hour" : `${keyLifetimeSec}s`;
-      const newRecords: VaultRecord[] = fileInfos.map((fi) => {
+      const newRecords: VaultRecord[] = fileInfos.map((fi, idx) => {
         const ownerAddr = accountAddress;
-        const keyBlobName = isOneDL ? `${fi.file.name}.shelbykey` : undefined;
+        const blobFileName = (customNames[idx] || fi.file.name).trim() || fi.file.name;
+        const keyBlobName = isOneDL ? `${blobFileName}.shelbykey` : undefined;
         // ONE-DL link: no key in URL, key is fetched from on-chain blob
         const link = isOneDL
-          ? `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}&keyBlob=${encodeURIComponent(keyBlobName!)}&oneDownload=true`
-          : `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(fi.file.name)}${useEncryption && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}`;
+          ? `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(blobFileName)}&keyBlob=${encodeURIComponent(keyBlobName!)}&oneDownload=true`
+          : `${window.location.origin}/?address=${ownerAddr}&blob=${encodeURIComponent(blobFileName)}${useEncryption && finalPassword ? `&key=${encodeURIComponent(finalPassword)}` : ""}`;
         return {
           id: `blob_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          name: fi.file.name,
+          name: blobFileName,
           size: fi.file.size,
           hash: fi.hash,
           date: new Date().toLocaleString(),
@@ -443,7 +444,7 @@ export default function UploadClient() {
           downloaded: false,
           expiration: expirationSeconds === 3600 ? "1 hour" : expirationSeconds === 86400 ? "1 day" : expirationSeconds === 604800 ? "7 days" : "30 days",
           shareLink: link,
-          blobName: fi.file.name,
+          blobName: blobFileName,
           owner: ownerAddr,
           keyBlobName,
           keyExpiration: isOneDL ? keyLifetimeLabel : undefined,
