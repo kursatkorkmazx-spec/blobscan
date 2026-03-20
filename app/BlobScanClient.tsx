@@ -89,7 +89,7 @@ export default function BlobScanClient() {
   const [loading, setLoading] = useState(false);
   const [netStatus, setNetStatus] = useState<any>(null);
   const [modalSrc, setModalSrc] = useState("");
-  const [modalType, setModalType] = useState<"image" | "video">("image");
+  const [modalType, setModalType] = useState<"image" | "video" | "audio">("image");
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
@@ -409,17 +409,21 @@ export default function BlobScanClient() {
       }
 
       const ext = blobNameSuffix.split(".").pop()?.toLowerCase() || "";
-      const videoExts = ["mp4", "webm", "ogg", "mov"];
+      const videoExts = ["mp4", "webm", "mov"];
+      const audioExts = ["mp3", "wav", "aac", "m4a", "flac", "ogg"];
       const mimeTypes: Record<string, string> = {
         jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
         gif: "image/gif", webp: "image/webp", jfif: "image/jpeg",
-        mp4: "video/mp4", webm: "video/webm", ogg: "video/ogg", mov: "video/quicktime",
+        mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime",
+        mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac",
+        m4a: "audio/mp4", flac: "audio/flac", ogg: "audio/ogg",
       };
       const isVideo = videoExts.includes(ext);
+      const isAudio = audioExts.includes(ext);
       const mime = mimeTypes[ext] || "image/png";
       const mediaBlob = new Blob([data], { type: mime });
       const url = URL.createObjectURL(mediaBlob);
-      setModalType(isVideo ? "video" : "image");
+      setModalType(isVideo ? "video" : isAudio ? "audio" : "image");
       setModalSrc(url);
     } catch (err: any) {
       alert(`Preview failed: ${err?.message || "Unknown error"}`);
@@ -439,8 +443,6 @@ export default function BlobScanClient() {
             <video
               src={modalSrc}
               controls
-              autoPlay
-              muted
               playsInline
               style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "8px" }}
               onClick={e => e.stopPropagation()}
@@ -454,6 +456,25 @@ export default function BlobScanClient() {
                   4: "Bu format desteklenmiyor",
                 };
                 alert(`Video oynatılamadı: ${msgs[code ?? 0] ?? "Bilinmeyen hata"}`);
+              }}
+            />
+          ) : modalType === "audio" ? (
+            <audio
+              src={modalSrc}
+              controls
+              autoPlay
+              style={{ width: "320px", borderRadius: "8px" }}
+              onClick={e => e.stopPropagation()}
+              onError={e => {
+                const a = e.currentTarget as HTMLAudioElement;
+                const code = a.error?.code;
+                const msgs: Record<number, string> = {
+                  1: "Yükleme iptal edildi",
+                  2: "Ağ hatası",
+                  3: "Ses çözülemiyor (codec sorunu)",
+                  4: "Bu format desteklenmiyor",
+                };
+                alert(`Ses oynatılamadı: ${msgs[code ?? 0] ?? "Bilinmeyen hata"}`);
               }}
             />
           ) : (
@@ -569,7 +590,8 @@ export default function BlobScanClient() {
               <div style={{ fontSize: "13px", color: "#444" }}>No blobs found for this address.</div>
             ) : accountBlobs.map((blob, i) => {
               const isImage = blob.blobNameSuffix.match(/\.(jpg|jpeg|png|gif|webp|jfif)$/i);
-              const isVideo = blob.blobNameSuffix.match(/\.(mp4|webm|ogg|mov)$/i);
+              const isVideo = blob.blobNameSuffix.match(/\.(mp4|webm|mov)$/i);
+              const isAudio = blob.blobNameSuffix.match(/\.(mp3|wav|aac|m4a|flac|ogg)$/i);
               const isExpired = blob.expirationMicros < Date.now() * 1000;
               const explorerUrl = `https://explorer.shelby.xyz/shelbynet/account/${searchAddr}/blobs?name=${encodeURIComponent(blob.blobNameSuffix)}`;
               const isHighlighted = highlightBlob === blob.blobNameSuffix;
@@ -587,10 +609,10 @@ export default function BlobScanClient() {
                           ? <img src={thumbnails[blob.blobNameSuffix]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           : loadingThumbs.has(blob.blobNameSuffix) ? <span style={{ fontSize: "10px", color: "#555" }}>...</span> : "🖼"}
                     </div>
-                  ) : isVideo ? (
+                  ) : isVideo || isAudio ? (
                     <div onClick={() => handlePreviewBlob(blob.blobNameSuffix)}
                       style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: previewLoading === blob.blobNameSuffix ? "10px" : "18px", cursor: previewLoading ? "default" : "pointer", color: "#7dd3a8" }}>
-                      {previewLoading === blob.blobNameSuffix ? "..." : "▶️"}
+                      {previewLoading === blob.blobNameSuffix ? "..." : isAudio ? "🎵" : "▶️"}
                     </div>
                   ) : (
                     <div style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>
