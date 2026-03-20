@@ -317,7 +317,7 @@ export default function BlobScanClient() {
           // Key blob expired or not found — on-chain enforced!
           setKeyExpired(true);
           setLinkConsumed(true);
-          alert("🔒 Decryption key has expired on-chain. This file can no longer be decrypted.\n\nThe key blob was automatically destroyed by the Shelby network.");
+          alert("⏳ Access window expired. The time-limited key has been destroyed on-chain.\n\nThis file can no longer be decrypted.");
           setDownloading(null);
           return;
         }
@@ -652,14 +652,14 @@ export default function BlobScanClient() {
           {/* Banners */}
           {keyExpired && (
             <div style={{ background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: "10px", padding: "14px 18px", marginBottom: "16px" }}>
-              <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>🔒 Decryption Key Destroyed — </span>
-              <span style={{ color: "#666", fontSize: "12px" }}>The key blob has expired on-chain.</span>
+              <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>⏳ Access Window Expired — </span>
+              <span style={{ color: "#666", fontSize: "12px" }}>The time-limited key has been destroyed on-chain. This file can no longer be decrypted.</span>
             </div>
           )}
           {linkConsumed && isOneDownload && !keyExpired && (
             <div style={{ background: "#1a0a0a", border: "1px solid #3a1515", borderRadius: "10px", padding: "14px 18px", marginBottom: "16px" }}>
-              <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>⚡ Link Already Used — </span>
-              <span style={{ color: "#666", fontSize: "12px" }}>This was a one-time download link.</span>
+              <span style={{ color: "#f87171", fontWeight: 600, fontSize: "13px" }}>⏳ Link Already Used — </span>
+              <span style={{ color: "#666", fontSize: "12px" }}>This was a time-limited link (same browser).</span>
             </div>
           )}
 
@@ -740,7 +740,7 @@ export default function BlobScanClient() {
                             <div style={{ fontSize: "13px", color: "#e5e5e5", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{blob.blobNameSuffix}</div>
                             <div style={{ fontSize: "11px", color: "#444", display: "flex", gap: "6px", flexWrap: "wrap" }}>
                               {isHighlighted && !linkConsumed && <span style={{ color: "#39FF14" }}>● Shared</span>}
-                              {isHighlighted && isOneDownload && <span style={{ color: "#fb923c" }}>⚡ ONE-DL</span>}
+                              {isHighlighted && isOneDownload && <span style={{ color: "#fb923c" }}>⏳ TIME-LIMITED</span>}
                               {isHighlighted && linkConsumed && <span style={{ color: "#f87171" }}>CONSUMED</span>}
                             </div>
                           </div>

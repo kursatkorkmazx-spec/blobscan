@@ -162,7 +162,7 @@ export default function UploadClient() {
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
   const [expiration, setExpiration] = useState("86400");
   const [oneDownload, setOneDownload] = useState(false);
-  const [keyLifetime, setKeyLifetime] = useState("1800"); // 30 min default for one-download key blob
+  const [keyLifetime, setKeyLifetime] = useState("300"); // 5 min default
   const [encrypt, setEncrypt] = useState(false);
   const [password, setPassword] = useState("");
   const [autoKey, setAutoKey] = useState(false);
@@ -423,7 +423,7 @@ export default function UploadClient() {
       }
 
       // Create vault records
-      const keyLifetimeLabel = keyLifetimeSec === 300 ? "5 min" : keyLifetimeSec === 1800 ? "30 min" : keyLifetimeSec === 3600 ? "1 hour" : `${keyLifetimeSec}s`;
+      const keyLifetimeLabel = keyLifetimeSec === 60 ? "1 min" : keyLifetimeSec === 300 ? "5 min" : keyLifetimeSec === 600 ? "10 min" : `${keyLifetimeSec}s`;
       const newRecords: VaultRecord[] = fileInfos.map((fi, idx) => {
         const ownerAddr = accountAddress;
         const blobFileName = fi.file.name;
@@ -741,22 +741,21 @@ export default function UploadClient() {
                   )}
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "#888", marginTop: "8px" }}>
                     <input type="checkbox" checked={oneDownload} onChange={e => setOneDownload(e.target.checked)} />
-                    ⚡ ONE DOWNLOAD — on-chain enforced (key blob self-destructs)
+                    ⏳ TIME-LIMITED — on-chain enforced (key blob self-destructs)
                   </label>
                   {oneDownload && (
                     <div style={{ marginTop: "8px", marginLeft: "24px" }}>
                       <div style={{ fontSize: "11px", color: "#f87171", marginBottom: "6px" }}>
-                        File will be AES-256-GCM encrypted. Decryption key stored as separate on-chain blob with short expiration.
-                        After expiration, key is destroyed by the network — file becomes permanently undecryptable.
+                        File will be AES-256-GCM encrypted. Decryption key stored on-chain and destroyed after the selected time window.
+                        After expiration, the key is gone — file becomes permanently undecryptable.
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "11px", color: "#888" }}>Key lifetime:</span>
+                        <span style={{ fontSize: "11px", color: "#888" }}>Access window:</span>
                         <select value={keyLifetime} onChange={e => setKeyLifetime(e.target.value)}
-                          style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#f87171",  fontSize: "11px" }}>
+                          style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#f87171", fontSize: "11px" }}>
+                          <option value="60">1 minute</option>
                           <option value="300">5 minutes</option>
-                          <option value="1800">30 minutes</option>
-                          <option value="3600">1 hour</option>
-                          <option value="7200">2 hours</option>
+                          <option value="600">10 minutes</option>
                         </select>
                       </div>
                     </div>
@@ -855,7 +854,7 @@ export default function UploadClient() {
                   <div style={{ fontSize: "11px", color: "#555", marginBottom: "4px" }}>
                     {formatSize(r.size)} · {r.date} · Expires: {r.expiration}
                     {r.encrypted && <span style={{ marginLeft: "6px", color: "#60a5fa" }}>🔒 AES-256</span>}
-                    {r.oneDownload && <span style={{ marginLeft: "6px", color: "#f87171" }}>⚡ ONE-DL</span>}
+                    {r.oneDownload && <span style={{ marginLeft: "6px", color: "#f87171" }}>⏳ TIME-LIMITED</span>}
                     {r.keyBlobName && <span style={{ marginLeft: "6px", color: "#f87171" }}>Key expires: {r.keyExpiration}</span>}
                   </div>
                   <div style={{ fontSize: "10px", color: "#333", marginBottom: "6px" }}>ID: {r.id} · SHA-256: {r.hash.slice(0, 12)}...</div>
