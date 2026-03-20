@@ -183,6 +183,7 @@ export default function UploadClient() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [txHash, setTxHash] = useState("");
+  const [customNames, setCustomNames] = useState<string[]>([]);
   const [qrModal, setQrModal] = useState<{ url: string; dataUrl: string } | null>(null);
 
   async function showQR(url: string) {
@@ -228,6 +229,7 @@ export default function UploadClient() {
       return { file: f, hash, preview };
     }));
     setFileInfos(infos);
+    setCustomNames(infos.map(fi => fi.file.name));
     addEvent("FILE_SELECTED", `${files.length} file(s) selected`);
   }
 
@@ -264,24 +266,26 @@ export default function UploadClient() {
       // Key blobs for ONE-DL (stored separately with short expiration)
       const keyBlobsToUpload: { blobName: string; blobData: Uint8Array }[] = [];
 
-      for (const fi of fileInfos) {
+      for (let idx = 0; idx < fileInfos.length; idx++) {
+        const fi = fileInfos[idx];
+        const blobFileName = (customNames[idx] || fi.file.name).trim() || fi.file.name;
         let data = new Uint8Array(await fi.file.arrayBuffer());
 
         // Encrypt if enabled or ONE-DL
         if (useEncryption && finalPassword) {
-          setStatus(`Encrypting ${fi.file.name} (AES-256-GCM)...`);
-          addEvent("FILE_ENCRYPTED", `AES-256-GCM encryption applied to ${fi.file.name}`);
+          setStatus(`Encrypting ${blobFileName} (AES-256-GCM)...`);
+          addEvent("FILE_ENCRYPTED", `AES-256-GCM encryption applied to ${blobFileName}`);
           data = await encryptData(data, finalPassword);
         }
 
         blobsToUpload.push({
-          blobName: fi.file.name,
+          blobName: blobFileName,
           blobData: data,
         });
 
         // For ONE-DL: create a key blob containing the AES password
         if (isOneDL && finalPassword) {
-          const keyBlobName = `${fi.file.name}.shelbykey`;
+          const keyBlobName = `${blobFileName}.shelbykey`;
           const keyData = new TextEncoder().encode(finalPassword);
           keyBlobsToUpload.push({
             blobName: keyBlobName,
@@ -661,8 +665,16 @@ export default function UploadClient() {
                       {fileInfos.map((fi, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px 0", borderBottom: i < fileInfos.length - 1 ? "1px solid #2a2a2a" : "none" }}>
                           {fi.preview ? <img src={fi.preview} style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "4px", border: "1px solid #2a2a2a" }} /> : <div style={{ width: "48px", height: "48px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>}
-                          <div style={{ flex: 1 }}>
-                            <div style={{ color: "#a0c4ff", fontSize: "13px" }}>{fi.file.name}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <input
+                              value={customNames[i] ?? fi.file.name}
+                              onChange={e => setCustomNames(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
+                              onClick={e => e.stopPropagation()}
+                              style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a2a2a", color: "#a0c4ff", fontSize: "13px", fontFamily: "monospace", width: "100%", outline: "none", padding: "2px 0", marginBottom: "2px" }}
+                            />
+                            {customNames[i] && customNames[i] !== fi.file.name && (
+                              <div style={{ color: "#555", fontSize: "10px" }}>original: {fi.file.name}</div>
+                            )}
                             <div style={{ color: "#555", fontSize: "11px" }}>{fileType(fi.file.name)} · {formatSize(fi.file.size)}</div>
                             <div style={{ color: "#333", fontSize: "10px", marginTop: "2px" }}>SHA-256: {fi.hash.slice(0, 16)}...{fi.hash.slice(-8)}</div>
                           </div>
