@@ -571,7 +571,7 @@ export default function UploadClient() {
   const tab = (active: boolean) => ({ background: "transparent", border: "none", borderBottom: active ? "2px solid #7dd3a8" : "2px solid transparent", color: active ? "#7dd3a8" : "#555", fontFamily: "monospace", fontSize: "13px", cursor: "pointer", padding: "8px 16px", marginRight: "4px" } as const);
 
   return (
-    <main style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", padding: "32px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
+    <main className="upload-root" style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
       <canvas id="matrix-upload" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, opacity: 0.08, pointerEvents: "none" }} ref={el => {
         if (!el || (el as any)._init) return;
         (el as any)._init = true;
@@ -600,14 +600,14 @@ export default function UploadClient() {
             <img src={qrModal.dataUrl} style={{ width: "280px", height: "280px", borderRadius: "8px", border: "1px solid #2a2a2a" }} alt="QR Code" />
             <div style={{ fontSize: "10px", color: "#444", marginTop: "10px", wordBreak: "break-all", maxHeight: "40px", overflow: "hidden" }}>{qrModal.url}</div>
             <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "center" }}>
-              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "6px 14px", color: "#7dd3a8", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Linki Kopyala</button>
+              <button onClick={() => copyToClipboard(qrModal.url)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "6px 14px", color: "#7dd3a8", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Copy Link</button>
               <button onClick={() => {
                 const a = document.createElement("a");
                 a.href = qrModal.dataUrl;
                 a.download = "qr-code.png";
                 a.click();
-              }} style={{ background: "transparent", border: "1px solid #555", borderRadius: "4px", padding: "6px 14px", color: "#888", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>PNG İndir</button>
-              <button onClick={() => setQrModal(null)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Kapat</button>
+              }} style={{ background: "transparent", border: "1px solid #555", borderRadius: "4px", padding: "6px 14px", color: "#888", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Download PNG</button>
+              <button onClick={() => setQrModal(null)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "6px 14px", color: "#555", fontFamily: "monospace", fontSize: "11px", cursor: "pointer" }}>Close</button>
             </div>
           </div>
         </div>
@@ -792,7 +792,7 @@ export default function UploadClient() {
 
           {activeTab === "vault" && (
             <div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", marginBottom: "16px" }}>
+              <div className="vault-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", marginBottom: "16px" }}>
                 {[["TOTAL", stats.total, "#a0c4ff"], ["ACTIVE", stats.active, "#4ade80"], ["EXPIRED", stats.expired, "#facc15"], ["CONSUMED", stats.consumed, "#f87171"]].map(([label, count, color]) => (
                   <div key={label as string} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "6px", padding: "12px", textAlign: "center" as const }}>
                     <div style={{ fontSize: "18px", color: color as string, fontWeight: "bold" }}>{count}</div>
@@ -824,10 +824,10 @@ export default function UploadClient() {
                     {r.keyBlobName && <span style={{ marginLeft: "6px", color: "#f87171" }}>Key expires: {r.keyExpiration}</span>}
                   </div>
                   <div style={{ fontSize: "10px", color: "#333", marginBottom: "6px" }}>ID: {r.id} · SHA-256: {r.hash.slice(0, 12)}...</div>
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                     {r.shareLink && (
                       <>
-                        <input readOnly value={r.shareLink} style={{ flex: 1, background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "10px" }} />
+                        <input readOnly value={r.shareLink} style={{ flex: 1, minWidth: "120px", background: "#111", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "4px 8px", color: "#555", fontFamily: "monospace", fontSize: "10px" }} />
                         <button onClick={() => copyToClipboard(r.shareLink!)} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>Copy</button>
                         <button onClick={() => showQR(r.shareLink!)} style={{ background: "transparent", border: "1px solid #7dd3a8", borderRadius: "4px", padding: "3px 6px", color: "#7dd3a8", cursor: "pointer", fontSize: "10px" }}>QR</button>
                       </>
@@ -860,6 +860,13 @@ export default function UploadClient() {
           )}
         </>
       )}
+      <style>{`
+        .upload-root { padding: 32px; }
+        @media (max-width: 600px) {
+          .upload-root { padding: 14px; }
+          .vault-stats { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }

@@ -427,7 +427,7 @@ export default function BlobScanClient() {
   const card = { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "20px", marginBottom: "16px" } as const;
 
   return (
-    <div style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", padding: "32px", paddingBottom: "120px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
+    <div className="blobscan-root" style={{ fontFamily: "monospace", background: "#0f0f0f", color: "#e0e0e0", minHeight: "100vh", paddingBottom: "120px", maxWidth: "800px", margin: "0 auto", position: "relative" }}>
       <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1, opacity: 0.08, pointerEvents: "none" }} />
       {modalSrc && (
         <div onClick={() => { URL.revokeObjectURL(modalSrc); setModalSrc(""); }} style={{ display: "flex", position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.9)", zIndex: 999, cursor: "zoom-out", alignItems: "center", justifyContent: "center" }}>
@@ -568,12 +568,14 @@ export default function BlobScanClient() {
                   ) : (
                     <div style={{ width: "40px", height: "40px", background: "#111", borderRadius: "4px", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📄</div>
                   )}
-                  <div style={{ flex: 1 }}>
-                    <span style={{ color: "#a0c4ff", fontSize: "13px" }}>{blob.blobNameSuffix}</span>
-                    {isHighlighted && !linkConsumed && <span style={{ fontSize: "10px", color: "#7dd3a8", marginLeft: "6px", background: "#1a3a2a", padding: "1px 6px", borderRadius: "3px" }}>Shared with you</span>}
-                    {isHighlighted && isOneDownload && <span style={{ fontSize: "10px", color: "#f87171", marginLeft: "6px", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>⚡ ONE-DL</span>}
-                    {isHighlighted && linkConsumed && <span style={{ fontSize: "10px", color: "#f87171", marginLeft: "6px", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>CONSUMED</span>}
-                    <div style={{ color: "#555", fontSize: "11px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
+                      <span style={{ color: "#a0c4ff", fontSize: "13px", wordBreak: "break-all" }}>{blob.blobNameSuffix}</span>
+                      {isHighlighted && !linkConsumed && <span style={{ fontSize: "10px", color: "#7dd3a8", background: "#1a3a2a", padding: "1px 6px", borderRadius: "3px" }}>Shared with you</span>}
+                      {isHighlighted && isOneDownload && <span style={{ fontSize: "10px", color: "#f87171", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>⚡ ONE-DL</span>}
+                      {isHighlighted && linkConsumed && <span style={{ fontSize: "10px", color: "#f87171", background: "#3a1010", padding: "1px 6px", borderRadius: "3px" }}>CONSUMED</span>}
+                    </div>
+                    <div style={{ color: "#555", fontSize: "11px", marginTop: "2px" }}>
                       {formatSize(blob.size)}
                       {" · "}
                       {isExpired
@@ -583,18 +585,20 @@ export default function BlobScanClient() {
                       {blob.isWritten && <span style={{ color: "#4ade80", marginLeft: "6px" }}>● Written</span>}
                       {blob.isDeleted && <span style={{ color: "#f87171", marginLeft: "6px" }}>● Deleted</span>}
                     </div>
+                    <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
+                      <a href={explorerUrl} target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a2a", borderRadius: "4px" }}>Explorer</a>
+                      {!isExpired && blob.isWritten && !(isHighlighted && linkConsumed) && (
+                        <button onClick={() => handleDownload(blob.blobNameSuffix)}
+                          disabled={downloading === blob.blobNameSuffix}
+                          style={{ color: "#7dd3a8", fontSize: "11px", background: "transparent", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px", cursor: "pointer", fontFamily: "monospace", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1 }}>
+                          {downloading === blob.blobNameSuffix ? "Downloading..." : "Download"}
+                        </button>
+                      )}
+                      {isHighlighted && linkConsumed && (
+                        <span style={{ color: "#f87171", fontSize: "11px", padding: "4px 8px", border: "1px solid #3a1010", borderRadius: "4px" }}>Link used</span>
+                      )}
+                    </div>
                   </div>
-                  <a href={explorerUrl} target="_blank" style={{ color: "#555", fontSize: "11px", textDecoration: "none", padding: "4px 8px", border: "1px solid #2a2a2a", borderRadius: "4px", marginRight: "4px" }}>Explorer</a>
-                  {!isExpired && blob.isWritten && !(isHighlighted && linkConsumed) && (
-                    <button onClick={() => handleDownload(blob.blobNameSuffix)}
-                      disabled={downloading === blob.blobNameSuffix}
-                      style={{ color: "#7dd3a8", fontSize: "11px", background: "transparent", padding: "4px 8px", border: "1px solid #7dd3a8", borderRadius: "4px", cursor: "pointer", fontFamily: "monospace", opacity: downloading === blob.blobNameSuffix ? 0.5 : 1 }}>
-                      {downloading === blob.blobNameSuffix ? "Downloading..." : "Download"}
-                    </button>
-                  )}
-                  {isHighlighted && linkConsumed && (
-                    <span style={{ color: "#f87171", fontSize: "11px", padding: "4px 8px", border: "1px solid #3a1010", borderRadius: "4px" }}>Link used</span>
-                  )}
                 </div>
               );
             })}
@@ -621,7 +625,13 @@ export default function BlobScanClient() {
       <div style={{ textAlign: "center" as const, fontSize: "11px", color: "#333", padding: "40px 0 16px" }}>
         Built by <a href="https://twitter.com/solscammer" target="_blank" style={{ color: "#555", textDecoration: "none" }}>@solscammer</a>
       </div>
-      <style>{`@keyframes blink { 50% { opacity: 0; } }`}</style>
+      <style>{`
+        @keyframes blink { 50% { opacity: 0; } }
+        .blobscan-root { padding: 32px; }
+        @media (max-width: 600px) {
+          .blobscan-root { padding: 14px; }
+        }
+      `}</style>
     </div>
   );
 }
