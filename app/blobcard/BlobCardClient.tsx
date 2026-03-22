@@ -226,7 +226,7 @@ function drawCard(
   ctx.fillStyle = `${theme.accent}22`;
   ctx.font = "12px 'Courier New', monospace";
   ctx.textAlign = "center";
-  ctx.fillText("✏  DRAW YOUR VISUAL HERE", w / 2, drawAreaY + drawAreaH / 2 + 5);
+  ctx.fillText("DRAW YOUR VISUAL HERE", w / 2, drawAreaY + drawAreaH / 2 + 5);
   ctx.restore();
 
   // ── Bottom divider
@@ -533,7 +533,11 @@ export default function BlobCardClient() {
     const dc = drawingRef.current;
     if (!dc || dc.width === 0 || dc.height === 0) return;
     const ctx = targetCanvas.getContext("2d")!;
+    // Reset any transform left by drawCard (e.g. scale(2,2) for hi-res)
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(dc, 0, 0, targetCanvas.width, targetCanvas.height);
+    ctx.restore();
   }
 
   function handleDownload() {
@@ -565,6 +569,12 @@ export default function BlobCardClient() {
     lastPointRef.current = pt;
   }
 
+  // Card-space zone coordinates (matches drawCard at scale=1, 760×420)
+  const DRAW_ZONES = [
+    { x: 36,  y: 162, w: 688, h: 170, r: 8 }, // main drawing area
+    { x: 532, y: 358, w: 190, h: 46,  r: 4 }, // signature area
+  ] as const;
+
   function onDrawMove(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
     if (!isDrawingRef.current) return;
     const canvas = drawingRef.current;
@@ -574,6 +584,13 @@ export default function BlobCardClient() {
       ? getDrawPoint(canvas, e.touches[0])
       : getDrawPoint(canvas, e.nativeEvent as MouseEvent);
     if (lastPointRef.current) {
+      ctx.save();
+      // Clip to allowed drawing zones only
+      ctx.beginPath();
+      for (const z of DRAW_ZONES) {
+        ctx.roundRect(z.x, z.y, z.w, z.h, z.r);
+      }
+      ctx.clip();
       ctx.beginPath();
       ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
       ctx.lineTo(pt.x, pt.y);
@@ -582,6 +599,7 @@ export default function BlobCardClient() {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.stroke();
+      ctx.restore();
     }
     lastPointRef.current = pt;
   }
