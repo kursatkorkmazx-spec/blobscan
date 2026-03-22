@@ -1,6 +1,13 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
+import {
+  ShelbyBlobClient,
+  createDefaultErasureCodingProvider,
+  generateCommitments,
+  expectedTotalChunksets,
+} from "@shelby-protocol/sdk/browser";
 import { shelbyClient } from "../shelbyClient";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -431,7 +438,7 @@ function saveMintRecord(record: MintRecord) {
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 export default function BlobCardClient() {
-  const { account, connect, wallets, connected, disconnect } = useWallet();
+  const { account, connect, wallets, connected, disconnect, signAndSubmitTransaction } = useWallet();
   const walletAddress = account?.address?.toString() ?? "";
 
   const [theme, setTheme] = useState<Theme>("abyss");
@@ -466,14 +473,14 @@ export default function BlobCardClient() {
     renderCard();
   }, [renderCard]);
 
-  // Mint = upload PNG to Shelby
+  // Mint = upload PNG to Shelby via wallet adapter
   async function handleMint() {
     if (!connected || !walletAddress || !account) return;
     if (mintRecord) return;
     setMinting(true);
     setMintStatus("Generating card...");
     try {
-      // Render high-res card (no placeholders)
+      // Render hi-res card (no placeholders)
       const hiResCanvas = document.createElement("canvas");
       drawCard(hiResCanvas, walletAddress, t, 2, false);
       compositeDrawing(hiResCanvas);
@@ -482,24 +489,46 @@ export default function BlobCardClient() {
       );
 
       setMintStatus("Uploading to Shelby...");
-      const buffer = await blob.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
       const blobName = `blobcard-s1-${walletAddress.slice(0, 10)}.png`;
-      const expiryMs = (Date.now() + 365 * 24 * 60 * 60 * 1000) * 1000;
+      const expiryMicros = (Date.now() + 365 * 24 * 60 * 60 * 1000) * 1000;
+      const accountAddress = AccountAddress.from(walletAddress);
 
-      await shelbyClient.upload({
-        blobData: bytes,
+      // 1. Generate erasure-coding commitments
+      const provider = await createDefaultErasureCodingProvider();
+      const commitments = await generateCommitments(provider, bytes);
+      const chunksetSize = provider.config.chunkSizeBytes * provider.config.erasure_k;
+
+      // 2. Build on-chain registration payload
+      const payload = ShelbyBlobClient.createRegisterBlobPayload({
+        account: accountAddress,
         blobName,
-        expirationMicros: expiryMs,
-        signer: account as any,
+        blobSize: bytes.length,
+        blobMerkleRoot: commitments.blob_merkle_root,
+        numChunksets: expectedTotalChunksets(bytes.length, chunksetSize),
+        expirationMicros: expiryMicros,
+        encoding: provider.config.enumIndex,
       });
 
-      const record: MintRecord = {
-        address: walletAddress,
+      // 3. Submit via Petra wallet adapter
+      setMintStatus("Approve in wallet...");
+      const result = await signAndSubmitTransaction({ data: payload });
+
+      // 4. Wait for on-chain confirmation
+      setMintStatus("Confirming transaction...");
+      await (shelbyClient as any).coordination.aptos.waitForTransaction({
+        transactionHash: result.hash,
+      });
+
+      // 5. Upload blob data to storage nodes
+      setMintStatus("Uploading data...");
+      await (shelbyClient as any).rpc.putBlob({
+        account: accountAddress,
         blobName,
-        mintedAt: Date.now(),
-        theme,
-      };
+        blobData: bytes,
+      });
+
+      const record: MintRecord = { address: walletAddress, blobName, mintedAt: Date.now(), theme };
       saveMintRecord(record);
       setMintRecord(record);
       setMintStatus("Minted!");
