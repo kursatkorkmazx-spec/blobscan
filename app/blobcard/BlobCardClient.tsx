@@ -176,8 +176,8 @@ function drawCard(
   ctx.fillText("BLOBCARD", 56, 48);
   ctx.restore();
 
-  // ── S1 badge (top-right)
-  const badgeW = 56;
+  // ── TESTCARD badge (top-right)
+  const badgeW = 90;
   const badgeH = 26;
   const badgeX = w - 28 - badgeW;
   const badgeY = 24;
@@ -190,35 +190,43 @@ function drawCard(
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = theme.textPrimary;
-  ctx.font = "bold 11px 'Courier New', monospace";
+  ctx.font = "bold 10px 'Courier New', monospace";
   ctx.textAlign = "center";
-  ctx.fillText("S1", badgeX + badgeW / 2, badgeY + 17);
+  ctx.fillText("TESTCARD", badgeX + badgeW / 2, badgeY + 17);
   ctx.restore();
 
-  // ── Blob Avatar (left side, below header)
-  const avX = 52;
-  const avY = 108;
-  const avR = 42;
-  drawBlobAvatar(ctx, avX + avR, avY + avR, avR, colors, address);
-
-  // ── User info (right of avatar)
-  const infoX = avX + avR * 2 + 20;
-  const infoY = avY + 14;
-
-  // Display name (shortened address)
+  // ── User info (top-left of content area)
+  const infoX = 36;
+  const infoY = 90;
   ctx.save();
   ctx.fillStyle = theme.textPrimary;
-  ctx.font = "bold 30px Georgia, serif";
+  ctx.font = "bold 26px Georgia, serif";
   ctx.textAlign = "left";
   ctx.fillText(shortAddr(address), infoX, infoY + 28);
   ctx.restore();
 
-  // @ handle
   ctx.save();
   ctx.fillStyle = theme.textSecondary;
-  ctx.font = "16px 'Courier New', monospace";
+  ctx.font = "14px 'Courier New', monospace";
   ctx.textAlign = "left";
-  ctx.fillText(`@${address.slice(0, 10)}…${address.slice(-6)}`, infoX, infoY + 58);
+  ctx.fillText(`@${address.slice(0, 10)}…${address.slice(-6)}`, infoX, infoY + 54);
+  ctx.restore();
+
+  // ── Drawing area placeholder
+  ctx.save();
+  ctx.strokeStyle = `${theme.accent}33`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 5]);
+  const drawAreaY = 162;
+  const drawAreaH = h - 250;
+  ctx.beginPath();
+  ctx.roundRect(36, drawAreaY, w - 72, drawAreaH, 8);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = `${theme.accent}22`;
+  ctx.font = "12px 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("✏  DRAW YOUR VISUAL HERE", w / 2, drawAreaY + drawAreaH / 2 + 5);
   ctx.restore();
 
   // ── Bottom divider
@@ -231,7 +239,7 @@ function drawCard(
   ctx.stroke();
   ctx.restore();
 
-  // ── ID label
+  // ── ID label (bottom left)
   ctx.save();
   ctx.fillStyle = theme.textSecondary;
   ctx.font = "13px 'Courier New', monospace";
@@ -239,16 +247,24 @@ function drawCard(
   ctx.fillText(`ID: ${addrToId(address)}`, 36, h - 38);
   ctx.restore();
 
-  // ── Season label (bottom right)
+  // ── Signature area (bottom right)
+  const sigX = w - 228;
+  const sigY = h - 62;
+  const sigW = 190;
+  const sigH = 46;
   ctx.save();
-  ctx.fillStyle = theme.textSecondary;
-  ctx.font = "11px 'Courier New', monospace";
-  ctx.textAlign = "right";
-  ctx.fillText("SEASON 1 · GENESIS", w - 36, h - 38);
+  ctx.strokeStyle = `${theme.accent}44`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.roundRect(sigX, sigY, sigW, sigH, 4);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = `${theme.accent}44`;
+  ctx.font = "9px 'Courier New', monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("✍  SIGNATURE", sigX + 8, sigY + 14);
   ctx.restore();
-
-  // ── Blob mascot (right side)
-  drawBlobMascot(ctx, w - 140, h / 2 + 10, colors, address);
 }
 
 // ─── Blob avatar (generative from address) ─────────────────────────────────────
@@ -442,6 +458,10 @@ export default function BlobCardClient() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const [showAtmoDropdown, setShowAtmoDropdown] = useState(false);
 
   const t = THEMES[theme];
 
@@ -473,6 +493,7 @@ export default function BlobCardClient() {
       // Render high-res card
       const hiResCanvas = document.createElement("canvas");
       drawCard(hiResCanvas, walletAddress, t, 2);
+      compositeDrawing(hiResCanvas);
       const blob = await new Promise<Blob>((res, rej) =>
         hiResCanvas.toBlob(b => b ? res(b) : rej(new Error("Canvas to blob failed")), "image/png")
       );
@@ -508,14 +529,72 @@ export default function BlobCardClient() {
     }
   }
 
+  function compositeDrawing(targetCanvas: HTMLCanvasElement) {
+    const dc = drawingRef.current;
+    if (!dc || dc.width === 0 || dc.height === 0) return;
+    const ctx = targetCanvas.getContext("2d")!;
+    ctx.drawImage(dc, 0, 0, targetCanvas.width, targetCanvas.height);
+  }
+
   function handleDownload() {
     if (!walletAddress) return;
     const hiResCanvas = document.createElement("canvas");
     drawCard(hiResCanvas, walletAddress, t, 2);
+    compositeDrawing(hiResCanvas);
     const a = document.createElement("a");
     a.href = hiResCanvas.toDataURL("image/png");
     a.download = `blobcard-s1-${walletAddress.slice(0, 10)}.png`;
     a.click();
+  }
+
+  function getDrawPoint(canvas: HTMLCanvasElement, e: { clientX: number; clientY: number }): { x: number; y: number } {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  }
+
+  function onDrawStart(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    isDrawingRef.current = true;
+    const canvas = drawingRef.current;
+    if (!canvas) return;
+    const pt = "touches" in e
+      ? getDrawPoint(canvas, e.touches[0])
+      : getDrawPoint(canvas, e.nativeEvent as MouseEvent);
+    lastPointRef.current = pt;
+  }
+
+  function onDrawMove(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    if (!isDrawingRef.current) return;
+    const canvas = drawingRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const pt = "touches" in e
+      ? getDrawPoint(canvas, e.touches[0])
+      : getDrawPoint(canvas, e.nativeEvent as MouseEvent);
+    if (lastPointRef.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+    lastPointRef.current = pt;
+  }
+
+  function onDrawEnd() {
+    isDrawingRef.current = false;
+    lastPointRef.current = null;
+  }
+
+  function clearDrawing() {
+    const canvas = drawingRef.current;
+    if (!canvas) return;
+    canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   // ─── Styles ────────────────────────────────────────────────────────────────
@@ -623,28 +702,47 @@ export default function BlobCardClient() {
               {/* Left: controls */}
               <div style={{ flex: "0 0 220px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-                {/* Theme selector */}
-                <div style={{ background: "#161616", border: "1px solid #222", borderRadius: "12px", padding: "18px" }}>
+                {/* Theme selector – dropdown */}
+                <div style={{ background: "#161616", border: "1px solid #222", borderRadius: "12px", padding: "18px", position: "relative" as const }}>
                   <div style={{ fontSize: "11px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>ATMOSPHERE</div>
-                  {(Object.keys(THEMES) as Theme[]).map(k => (
-                    <button
-                      key={k}
-                      onClick={() => !mintRecord && setTheme(k)}
-                      disabled={!!mintRecord}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "10px",
-                        width: "100%", background: theme === k ? "rgba(57,255,20,0.08)" : "transparent",
-                        border: theme === k ? "1px solid rgba(57,255,20,0.3)" : "1px solid transparent",
-                        borderRadius: "8px", padding: "8px 12px", marginBottom: "4px",
-                        color: theme === k ? "#39FF14" : "#888", fontSize: "13px",
-                        cursor: mintRecord ? "default" : "pointer", fontFamily: "inherit",
-                        textAlign: "left" as const,
-                      }}
-                    >
-                      <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: THEMES[k].accent, display: "inline-block", flexShrink: 0, boxShadow: theme === k ? `0 0 6px ${THEMES[k].accent}` : "none" }} />
-                      {THEMES[k].label}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => !mintRecord && setShowAtmoDropdown(v => !v)}
+                    disabled={!!mintRecord}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      width: "100%", background: "rgba(57,255,20,0.06)",
+                      border: "1px solid rgba(57,255,20,0.25)", borderRadius: "8px",
+                      padding: "9px 12px", color: "#e5e5e5", fontSize: "13px",
+                      cursor: mintRecord ? "default" : "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: t.accent, display: "inline-block", boxShadow: `0 0 6px ${t.accent}` }} />
+                      {t.label}
+                    </span>
+                    <span style={{ fontSize: "10px", color: "#555" }}>{showAtmoDropdown ? "▲" : "▼"}</span>
+                  </button>
+                  {showAtmoDropdown && !mintRecord && (
+                    <div style={{ position: "absolute" as const, top: "calc(100% - 6px)", left: "18px", right: "18px", background: "#1c1c1c", border: "1px solid #2a2a2a", borderRadius: "8px", zIndex: 20, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
+                      {(Object.keys(THEMES) as Theme[]).map(k => (
+                        <button
+                          key={k}
+                          onClick={() => { setTheme(k); setShowAtmoDropdown(false); }}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "10px",
+                            width: "100%", background: theme === k ? "rgba(57,255,20,0.08)" : "transparent",
+                            border: "none", padding: "10px 14px",
+                            color: theme === k ? "#39FF14" : "#aaa", fontSize: "13px",
+                            cursor: "pointer", fontFamily: "inherit", textAlign: "left" as const,
+                            borderBottom: "1px solid #222",
+                          }}
+                        >
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: THEMES[k].accent, display: "inline-block", flexShrink: 0, boxShadow: theme === k ? `0 0 6px ${THEMES[k].accent}` : "none" }} />
+                          {THEMES[k].label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {mintRecord && (
                     <div style={{ fontSize: "10px", color: "#444", marginTop: "8px" }}>Theme locked after mint</div>
                   )}
@@ -672,12 +770,36 @@ export default function BlobCardClient() {
               {/* Right: card preview + actions */}
               <div style={{ flex: 1, minWidth: "320px" }}>
 
-                {/* Card preview */}
-                <div style={{ marginBottom: "20px", borderRadius: "16px", overflow: "hidden", border: "1px solid #1f1f1f", boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}>
+                {/* Card preview + drawing overlay */}
+                <div style={{ marginBottom: "8px", borderRadius: "16px", overflow: "hidden", border: "1px solid #1f1f1f", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", position: "relative" as const }}>
                   <canvas
                     ref={previewRef}
                     style={{ display: "block", width: "100%", height: "auto" }}
                   />
+                  <canvas
+                    ref={drawingRef}
+                    width={760}
+                    height={420}
+                    style={{ position: "absolute" as const, inset: 0, width: "100%", height: "100%", cursor: "crosshair", touchAction: "none" }}
+                    onMouseDown={onDrawStart}
+                    onMouseMove={onDrawMove}
+                    onMouseUp={onDrawEnd}
+                    onMouseLeave={onDrawEnd}
+                    onTouchStart={(e) => { e.preventDefault(); onDrawStart(e); }}
+                    onTouchMove={(e) => { e.preventDefault(); onDrawMove(e); }}
+                    onTouchEnd={onDrawEnd}
+                  />
+                </div>
+
+                {/* Drawing toolbar */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", padding: "6px 10px", background: "#111", border: "1px solid #1f1f1f", borderRadius: "8px" }}>
+                  <span style={{ fontSize: "11px", color: "#444", fontFamily: "monospace" }}>✏ Draw on the card with your pointer</span>
+                  <button
+                    onClick={clearDrawing}
+                    style={{ background: "transparent", border: "1px solid #333", borderRadius: "6px", padding: "4px 10px", color: "#888", fontSize: "11px", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Clear
+                  </button>
                 </div>
 
                 {/* Action buttons */}
