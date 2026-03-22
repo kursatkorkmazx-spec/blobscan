@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { shelbyClient } from "../shelbyClient";
-import { AccountAddress } from "@aptos-labs/ts-sdk";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Theme = "abyss" | "cosmic" | "neon" | "midnight";
@@ -485,8 +484,8 @@ export default function BlobCardClient() {
       const expiryMs = (Date.now() + 365 * 24 * 60 * 60 * 1000) * 1000;
 
       await shelbyClient.upload({
-        account: AccountAddress.from(walletAddress),
-        blobs: [{ name: blobName, data: bytes }],
+        blobData: bytes,
+        blobName,
         expirationMicros: expiryMs,
         signer: account as any,
       });
