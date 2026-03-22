@@ -465,7 +465,7 @@ export default function BlobScanClient() {
   // ─── Styles ──────────────────────────────────────────────────────────────────
   const S = {
     sidebar: { width: "190px", minHeight: "100vh", background: "#111", borderRight: "1px solid #1f1f1f", display: "flex", flexDirection: "column", flexShrink: 0, position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 50 } as const,
-    main: { marginLeft: "190px", minHeight: "100vh", display: "flex", flexDirection: "column", flex: 1, width: "calc(100% - 190px)" } as const,
+    main: { marginLeft: "190px", minHeight: "100vh", display: "flex", flexDirection: "column", flex: 1, width: "calc(100% - 190px)", position: "relative", zIndex: 1 } as const,
     topbar: { background: "#0d0d0d", borderBottom: "1px solid #1f1f1f", padding: "0 24px", height: "52px", display: "flex", alignItems: "center", gap: "12px", position: "sticky", top: 0, zIndex: 40 } as const,
     content: { padding: "28px 28px 80px", flex: 1 } as const,
     input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "8px", padding: "8px 14px", color: "#e5e5e5", fontSize: "13px", outline: "none", fontFamily: "inherit" } as const,
@@ -481,7 +481,29 @@ export default function BlobScanClient() {
   );
 
   return (
-    <div style={{ display: "flex", background: "#0d0d0d", minHeight: "100vh" }}>
+    <div style={{ display: "flex", background: "#0d0d0d", minHeight: "100vh", position: "relative" }}>
+
+      {/* ── Background images ── */}
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        display: "flex",
+        flexDirection: "row",
+        zIndex: 0,
+        pointerEvents: "none",
+        overflow: "hidden",
+      }}>
+        {["/bg1.jpg", "/bg2.jpg", "/bg3.jpg", "/bg4.jpg", "/bg5.jpg"].map((src, i) => (
+          <div key={i} style={{
+            flex: 1,
+            backgroundImage: `url(${src})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "grayscale(100%)",
+            opacity: 0.8,
+          }} />
+        ))}
+      </div>
 
       {/* ── Sidebar ── */}
       <aside style={S.sidebar}>
