@@ -107,7 +107,8 @@ function drawCard(
   canvas: HTMLCanvasElement,
   address: string,
   theme: ThemeConfig,
-  scale: number = 1
+  scale: number = 1,
+  showPlaceholders: boolean = true
 ) {
   const W = 760 * scale;
   const H = 420 * scale;
@@ -129,18 +130,6 @@ function drawCard(
   ctx.roundRect(0, 0, w, h, 20);
   ctx.fill();
 
-  // ── Subtle noise dots (decoration)
-  ctx.save();
-  ctx.globalAlpha = 0.04;
-  for (let i = 0; i < 120; i++) {
-    const x = (parseInt(address.slice(2 + i * 2, 4 + i * 2) || "aa", 16) / 255) * w;
-    const y = (parseInt(address.slice(4 + i * 2, 6 + i * 2) || "55", 16) / 255) * h;
-    ctx.fillStyle = theme.accent;
-    ctx.beginPath();
-    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
 
   // ── Card border glow
   ctx.save();
@@ -212,22 +201,19 @@ function drawCard(
   ctx.fillText(`@${address.slice(0, 10)}…${address.slice(-6)}`, infoX, infoY + 54);
   ctx.restore();
 
-  // ── Drawing area placeholder
-  ctx.save();
-  ctx.strokeStyle = `${theme.accent}33`;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([6, 5]);
+  // ── Drawing area placeholder (preview only)
   const drawAreaY = 162;
   const drawAreaH = h - 250;
-  ctx.beginPath();
-  ctx.roundRect(36, drawAreaY, w - 72, drawAreaH, 8);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = `${theme.accent}22`;
-  ctx.font = "12px 'Courier New', monospace";
-  ctx.textAlign = "center";
-  ctx.fillText("DRAW YOUR VISUAL HERE", w / 2, drawAreaY + drawAreaH / 2 + 5);
-  ctx.restore();
+  if (showPlaceholders) {
+    ctx.save();
+    ctx.strokeStyle = `${theme.accent}33`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.roundRect(36, drawAreaY, w - 72, drawAreaH, 8);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // ── Bottom divider
   ctx.save();
@@ -247,24 +233,21 @@ function drawCard(
   ctx.fillText(`ID: ${addrToId(address)}`, 36, h - 38);
   ctx.restore();
 
-  // ── Signature area (bottom right)
+  // ── Signature area (preview only)
   const sigX = w - 228;
   const sigY = h - 62;
   const sigW = 190;
   const sigH = 46;
-  ctx.save();
-  ctx.strokeStyle = `${theme.accent}44`;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 3]);
-  ctx.beginPath();
-  ctx.roundRect(sigX, sigY, sigW, sigH, 4);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = `${theme.accent}44`;
-  ctx.font = "9px 'Courier New', monospace";
-  ctx.textAlign = "left";
-  ctx.fillText("✍  SIGNATURE", sigX + 8, sigY + 14);
-  ctx.restore();
+  if (showPlaceholders) {
+    ctx.save();
+    ctx.strokeStyle = `${theme.accent}44`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.roundRect(sigX, sigY, sigW, sigH, 4);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // ─── Blob avatar (generative from address) ─────────────────────────────────────
@@ -490,9 +473,9 @@ export default function BlobCardClient() {
     setMinting(true);
     setMintStatus("Generating card...");
     try {
-      // Render high-res card
+      // Render high-res card (no placeholders)
       const hiResCanvas = document.createElement("canvas");
-      drawCard(hiResCanvas, walletAddress, t, 2);
+      drawCard(hiResCanvas, walletAddress, t, 2, false);
       compositeDrawing(hiResCanvas);
       const blob = await new Promise<Blob>((res, rej) =>
         hiResCanvas.toBlob(b => b ? res(b) : rej(new Error("Canvas to blob failed")), "image/png")
@@ -543,7 +526,7 @@ export default function BlobCardClient() {
   function handleDownload() {
     if (!walletAddress) return;
     const hiResCanvas = document.createElement("canvas");
-    drawCard(hiResCanvas, walletAddress, t, 2);
+    drawCard(hiResCanvas, walletAddress, t, 2, false);
     compositeDrawing(hiResCanvas);
     const a = document.createElement("a");
     a.href = hiResCanvas.toDataURL("image/png");
