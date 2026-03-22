@@ -507,6 +507,12 @@ export default function BlobScanClient() {
               Upload
             </div>
           </a>
+          <a href="/blobcard" style={{ textDecoration: "none" }}>
+            <div style={S.navItem(false)}>
+              <NavIcon d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" />
+              BlobCard
+            </div>
+          </a>
           <a href="https://explorer.shelby.xyz/shelbynet" target="_blank" style={{ textDecoration: "none" }}>
             <div style={S.navItem(false)}>
               <NavIcon d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />

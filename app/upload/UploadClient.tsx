@@ -591,6 +591,7 @@ export default function UploadClient() {
         <nav style={{ padding: "10px 0", flex: 1 }}>
           {[{ label: "Home", href: "/", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z", active: false },
             { label: "Upload", href: "/upload", icon: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12", active: true },
+            { label: "BlobCard", href: "/blobcard", icon: "M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z", active: false },
             { label: "Explorer ↗", href: "https://explorer.shelby.xyz/shelbynet", icon: "M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3", active: false },
           ].map(item => (
             <a key={item.label} href={item.href} target={item.label.includes("↗") ? "_blank" : undefined} style={{ textDecoration: "none" }}>
