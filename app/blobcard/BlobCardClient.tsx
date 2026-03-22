@@ -482,7 +482,7 @@ export default function BlobCardClient() {
       const buffer = await blob.arrayBuffer();
       const bytes = new Uint8Array(buffer);
       const blobName = `blobcard-s1-${walletAddress.slice(0, 10)}.png`;
-      const expiryMs = BigInt(Date.now() + 365 * 24 * 60 * 60 * 1000) * 1000n;
+      const expiryMs = BigInt(Date.now() + 365 * 24 * 60 * 60 * 1000) * BigInt(1000);
 
       await shelbyClient.upload({
         account: AccountAddress.from(walletAddress),
