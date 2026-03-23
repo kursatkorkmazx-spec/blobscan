@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { AccountAddress } from "@aptos-labs/ts-sdk";
 import { shelbyClient } from "./shelbyClient";
 
 const SHELBY_DEPLOYER = "0x85fdb9a176ab8ef1d9d9c1b60d60b3924f0800ac1de1cc2085fb0b8bb4988e6a";
@@ -106,6 +107,8 @@ export default function BlobScanClient() {
   const [linkConsumed, setLinkConsumed] = useState(false);
   const [keyBlobName, setKeyBlobName] = useState<string | null>(null);
   const [keyExpired, setKeyExpired] = useState(false);
+  const [blobCardUrl, setBlobCardUrl] = useState<string | null>(null);
+  const [blobCardVisible, setBlobCardVisible] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const twRef = useRef<HTMLSpanElement>(null);
 
@@ -214,6 +217,23 @@ export default function BlobScanClient() {
     setSearchAddr(address);
     setBlobsLoading(true);
     setAccountBlobs([]);
+
+    // Fetch BlobCard preview in background
+    setBlobCardVisible(false);
+    if (blobCardUrl) URL.revokeObjectURL(blobCardUrl);
+    setBlobCardUrl(null);
+    try {
+      const accountAddress = AccountAddress.from(address);
+      const blobName = `blobcard-s1-${accountAddress.toString().slice(0, 10)}.png`;
+      const baseUrl = (shelbyClient as any).baseUrl as string;
+      const res = await fetch(`${baseUrl}/v1/blobs/${accountAddress.toString()}/${blobName}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        setBlobCardUrl(URL.createObjectURL(blob));
+        setBlobCardVisible(true);
+      }
+    } catch {}
+
     try {
       const query = `{ current_fungible_asset_balances(where: {owner_address: {_eq: "${address}"}}) { amount asset_type } }`;
       const r = await fetch("https://api.shelbynet.shelby.xyz/v1/graphql", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
@@ -572,6 +592,24 @@ export default function BlobScanClient() {
           </>
         )}
       </div>
+
+      {/* ── BlobCard floating preview (top-right) ── */}
+      {blobCardVisible && blobCardUrl && (
+        <div style={{
+          position: "fixed", top: "60px", right: "24px", zIndex: 99,
+          width: "260px", borderRadius: "12px", overflow: "hidden",
+          border: "1px solid rgba(57,255,20,0.3)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.7), 0 0 16px rgba(57,255,20,0.08)",
+          background: "#0e0e0e",
+        }}>
+          <div style={{ background: "rgba(57,255,20,0.07)", padding: "6px 12px", fontSize: "10px", color: "#39FF14", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>✦ BlobCard</span>
+            <button onClick={() => setBlobCardVisible(false)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "14px", padding: 0, lineHeight: 1 }}>×</button>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={blobCardUrl} alt="BlobCard" style={{ display: "block", width: "100%", height: "auto" }} />
+        </div>
+      )}
 
       {/* ── Main ── */}
       <main style={S.main}>

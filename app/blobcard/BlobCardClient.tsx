@@ -446,13 +446,6 @@ export default function BlobCardClient() {
   const [minting, setMinting] = useState(false);
   const [mintStatus, setMintStatus] = useState("");
 
-  // Lookup state
-  const [lookupAddr, setLookupAddr] = useState("");
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupImageUrl, setLookupImageUrl] = useState<string | null>(null);
-  const [lookupStatus, setLookupStatus] = useState<"idle" | "found" | "not-found" | "error">("idle");
-  const [lookupError, setLookupError] = useState("");
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef<HTMLCanvasElement>(null);
@@ -545,38 +538,6 @@ export default function BlobCardClient() {
       setTimeout(() => setMintStatus(""), 6000);
     } finally {
       setMinting(false);
-    }
-  }
-
-  async function handleLookup() {
-    const addr = lookupAddr.trim();
-    if (!addr) return;
-    setLookupLoading(true);
-    setLookupStatus("idle");
-    setLookupError("");
-    if (lookupImageUrl) {
-      URL.revokeObjectURL(lookupImageUrl);
-      setLookupImageUrl(null);
-    }
-    try {
-      const accountAddress = AccountAddress.from(addr);
-      const blobName = `blobcard-s1-${accountAddress.toString().slice(0, 10)}.png`;
-      const baseUrl = (shelbyClient as any).baseUrl as string;
-      const url = `${baseUrl}/v1/blobs/${accountAddress.toString()}/${blobName}`;
-      const res = await fetch(url);
-      if (res.status === 404) {
-        setLookupStatus("not-found");
-        return;
-      }
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const blob = await res.blob();
-      setLookupImageUrl(URL.createObjectURL(blob));
-      setLookupStatus("found");
-    } catch (err: any) {
-      setLookupError(err?.message || "Lookup failed");
-      setLookupStatus("error");
-    } finally {
-      setLookupLoading(false);
     }
   }
 
@@ -733,61 +694,6 @@ export default function BlobCardClient() {
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "clamp(18px, 3vw, 30px)", color: "#39FF14", textShadow: "0 0 10px rgba(57,255,20,0.5)", letterSpacing: "2px", marginBottom: "10px" }}>BLOBCARD</div>
           <p style={{ color: "#555", fontSize: "12px", margin: 0 }}>Shelby Network · Season 1 · Genesis Edition</p>
-        </div>
-
-        {/* ── Lookup section ── */}
-        <div style={{ maxWidth: "660px", margin: "0 auto 36px" }}>
-          <div style={{ fontSize: "11px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px" }}>LOOKUP CARD BY ADDRESS</div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <input
-              value={lookupAddr}
-              onChange={e => setLookupAddr(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleLookup()}
-              placeholder="0x..."
-              style={{
-                flex: 1, background: "#161616", border: "1px solid #2a2a2a",
-                borderRadius: "8px", padding: "9px 14px", color: "#e5e5e5",
-                fontSize: "13px", fontFamily: "monospace", outline: "none",
-              }}
-            />
-            <button
-              onClick={handleLookup}
-              disabled={lookupLoading || !lookupAddr.trim()}
-              style={{
-                background: lookupLoading ? "#1a1a1a" : "#222",
-                border: "1px solid #333", borderRadius: "8px",
-                padding: "9px 18px", color: lookupLoading ? "#555" : "#aaa",
-                fontSize: "13px", cursor: lookupLoading ? "not-allowed" : "pointer",
-                fontFamily: "inherit", whiteSpace: "nowrap" as const,
-              }}
-            >
-              {lookupLoading ? "Searching…" : "Search"}
-            </button>
-          </div>
-
-          {/* Lookup result */}
-          {lookupStatus === "found" && lookupImageUrl && (
-            <div style={{ marginTop: "16px", borderRadius: "12px", overflow: "hidden", border: "1px solid rgba(57,255,20,0.25)", boxShadow: "0 4px 24px rgba(0,0,0,0.5)" }}>
-              <div style={{ background: "rgba(57,255,20,0.06)", padding: "8px 14px", fontSize: "11px", color: "#39FF14", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>✦</span>
-                <span>BlobCard found · {lookupAddr.slice(0, 10)}…</span>
-              </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={lookupImageUrl} alt="BlobCard preview" style={{ display: "block", width: "100%", height: "auto" }} />
-            </div>
-          )}
-
-          {lookupStatus === "not-found" && (
-            <div style={{ marginTop: "12px", padding: "10px 14px", background: "#161616", border: "1px solid #222", borderRadius: "8px", fontSize: "12px", color: "#555" }}>
-              No BlobCard found for this address.
-            </div>
-          )}
-
-          {lookupStatus === "error" && (
-            <div style={{ marginTop: "12px", padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: "8px", fontSize: "12px", color: "#f87171" }}>
-              {lookupError}
-            </div>
-          )}
         </div>
 
         {!connected ? (
