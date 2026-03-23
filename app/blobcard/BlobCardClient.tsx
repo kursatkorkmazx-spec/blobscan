@@ -445,6 +445,7 @@ export default function BlobCardClient() {
   const [mintRecord, setMintRecord] = useState<MintRecord | null>(null);
   const [minting, setMinting] = useState(false);
   const [mintStatus, setMintStatus] = useState("");
+  const [mintedImageUrl, setMintedImageUrl] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
@@ -461,6 +462,26 @@ export default function BlobCardClient() {
       setMintRecord(getMintRecord(walletAddress));
     }
   }, [walletAddress]);
+
+  // Fetch minted image when mintRecord is available
+  useEffect(() => {
+    if (!mintRecord) return;
+    let revoke: string | null = null;
+    (async () => {
+      try {
+        const accountAddress = AccountAddress.from(mintRecord.address);
+        const baseUrl = (shelbyClient as any).baseUrl as string;
+        const res = await fetch(`${baseUrl}/v1/blobs/${accountAddress.toString()}/${mintRecord.blobName}`);
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          revoke = url;
+          setMintedImageUrl(url);
+        }
+      } catch {}
+    })();
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [mintRecord]);
 
   // Render card preview
   const renderCard = useCallback(() => {
@@ -802,26 +823,38 @@ export default function BlobCardClient() {
 
                 {/* Card preview + drawing overlay */}
                 <div style={{ marginBottom: "8px", borderRadius: "16px", overflow: "hidden", border: "1px solid #1f1f1f", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", position: "relative" as const }}>
-                  <canvas
-                    ref={previewRef}
-                    style={{ display: "block", width: "100%", height: "auto" }}
-                  />
-                  <canvas
-                    ref={drawingRef}
-                    width={760}
-                    height={420}
-                    style={{ position: "absolute" as const, inset: 0, width: "100%", height: "100%", cursor: "crosshair", touchAction: "none" }}
-                    onMouseDown={onDrawStart}
-                    onMouseMove={onDrawMove}
-                    onMouseUp={onDrawEnd}
-                    onMouseLeave={onDrawEnd}
-                    onTouchStart={(e) => { e.preventDefault(); onDrawStart(e); }}
-                    onTouchMove={(e) => { e.preventDefault(); onDrawMove(e); }}
-                    onTouchEnd={onDrawEnd}
-                  />
+                  {mintRecord && mintedImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mintedImageUrl} alt="Minted BlobCard" style={{ display: "block", width: "100%", height: "auto" }} />
+                  ) : mintRecord && !mintedImageUrl ? (
+                    <div style={{ aspectRatio: "760/420", display: "flex", alignItems: "center", justifyContent: "center", background: "#111", color: "#444", fontSize: "12px", fontFamily: "monospace" }}>
+                      Loading…
+                    </div>
+                  ) : (
+                    <>
+                      <canvas
+                        ref={previewRef}
+                        style={{ display: "block", width: "100%", height: "auto" }}
+                      />
+                      <canvas
+                        ref={drawingRef}
+                        width={760}
+                        height={420}
+                        style={{ position: "absolute" as const, inset: 0, width: "100%", height: "100%", cursor: "crosshair", touchAction: "none" }}
+                        onMouseDown={onDrawStart}
+                        onMouseMove={onDrawMove}
+                        onMouseUp={onDrawEnd}
+                        onMouseLeave={onDrawEnd}
+                        onTouchStart={(e) => { e.preventDefault(); onDrawStart(e); }}
+                        onTouchMove={(e) => { e.preventDefault(); onDrawMove(e); }}
+                        onTouchEnd={onDrawEnd}
+                      />
+                    </>
+                  )}
                 </div>
 
-                {/* Drawing toolbar */}
+                {/* Drawing toolbar — only when not minted */}
+                {!mintRecord && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", padding: "6px 10px", background: "#111", border: "1px solid #1f1f1f", borderRadius: "8px" }}>
                   <span style={{ fontSize: "11px", color: "#444", fontFamily: "monospace" }}>✏ Draw on the card with your pointer</span>
                   <button
@@ -831,6 +864,7 @@ export default function BlobCardClient() {
                     Clear
                   </button>
                 </div>
+                )}
 
                 {/* Action buttons */}
                 <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" as const }}>

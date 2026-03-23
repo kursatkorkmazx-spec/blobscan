@@ -597,7 +597,7 @@ export default function BlobScanClient() {
       {blobCardVisible && blobCardUrl && (
         <div style={{
           position: "fixed", top: "60px", right: "24px", zIndex: 99,
-          width: "260px", borderRadius: "12px", overflow: "hidden",
+          width: "338px", borderRadius: "12px", overflow: "hidden",
           border: "1px solid rgba(57,255,20,0.3)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.7), 0 0 16px rgba(57,255,20,0.08)",
           background: "#0e0e0e",
